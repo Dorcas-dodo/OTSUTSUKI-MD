@@ -5,7 +5,8 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Koyeb utilise souvent le port 8080 ou 8000 par défaut
+const PORT = process.env.PORT || 8000; 
 
 app.use(express.static(__dirname));
 
@@ -14,6 +15,7 @@ app.get('/pair', async (req, res) => {
     if (!phone) return res.send({ error: "Numéro requis" });
     phone = phone.replace(/[^0-9]/g, '');
 
+    // Utilisation de /tmp pour les permissions d'écriture
     const authPath = path.join('/tmp', 'auth_' + phone);
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     
@@ -25,46 +27,13 @@ app.get('/pair', async (req, res) => {
             },
             printQRInTerminal: false,
             logger: pino({ level: "fatal" }),
+            // Browser mis à jour pour une meilleure reconnaissance WhatsApp
             browser: ["Ubuntu", "Chrome", "110.0.5481.177"],
-            // --- AJUSTEMENT À 30 SECONDES ---
             connectTimeoutMs: 30000, 
             defaultQueryTimeoutMs: 30000,
             keepAliveIntervalMs: 10000 
         });
 
         if (!sock.authState.creds.registered) {
-            await delay(2500); 
-            const code = await sock.requestPairingCode(phone);
-            if (!res.headersSent) res.send({ code: code });
-        }
-
-        sock.ev.on('creds.update', saveCreds);
-        
-        sock.ev.on("connection.update", async (s) => {
-            const { connection } = s;
-            
-            if (connection === "open") {
-                console.log("✅ Connexion réussie !");
-                await delay(5000);
-                const sessionID = Buffer.from(JSON.stringify(sock.authState.creds)).toString('base64');
-                await sock.sendMessage(sock.user.id, { text: `OTSUTSUKI-MD_SESSION_ID_${sessionID}` });
-                
-                // Petit délai de sécurité avant nettoyage
-                await delay(5000);
-                try { fs.rmSync(authPath, { recursive: true, force: true }); } catch (e) {}
-            }
-        });
-
-    } catch (err) {
-        console.error("ERREUR:", err);
-        if (!res.headersSent) res.status(500).send({ error: "Délai de 30s dépassé." });
-    }
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Le serveur HTTP attendra 45s max pour laisser de la marge
-const server = app.listen(PORT, () => console.log(`🚀 Serveur actif sur le port ${PORT}`));
-server.timeout = 45000;
+            await delay(3000); // Un peu plus de temps pour stabiliser la session
+            const code =
