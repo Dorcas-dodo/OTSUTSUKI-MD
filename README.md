@@ -10,8 +10,8 @@
 ![Status](https://img.shields.io/badge/Status-En%20Ligne-brightgreen)
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Owner](https://img.shields.io/badge/Owner-Celes-red)
-## 🔗 LIENS UTILES
-- 📱 [Générer SESSION_ID (Pair Code/QR)](https://ton-lien-ici.com)
+### 🔑 CONNEXION
+📱 **Générer SESSION_ID** : [Cliquez ici pour QR / Pair Code](https://votre-app-session.onrender.com)
   ### 📢 REJOINDRE LA COMMUNAUTÉ
 Si vous avez besoin d'aide ou si vous voulez suivre les mises à jour :
 
