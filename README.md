@@ -12,7 +12,11 @@
 ![Owner](https://img.shields.io/badge/Owner-Celes-red)
 ## 🔗 LIENS UTILES
 - 📱 [Générer SESSION_ID (Pair Code/QR)](https://ton-lien-ici.com)
-- 👥 [Groupe de Support](https://wa.me/votre-numéro)
+  ### 📢 REJOINDRE LA COMMUNAUTÉ
+Si vous avez besoin d'aide ou si vous voulez suivre les mises à jour :
+
+* 📺 **Chaîne WhatsApp** : [S'abonner à la chaîne](https://whatsapp.com/channel/0029VbAoFIMA2pL9Tv1omN2K)
+* 👨‍💻 **Développeur** : [Celes](https://wa.me/242068079834)
 ### 🚀 Fonctionnalités
 - 🛡️ **Antidelete** : Récupère les messages supprimés instantanément.
 - 👁️ **Auto-Status** : Regarde les statuts de tes contacts automatiquement.
