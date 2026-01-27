@@ -26,14 +26,14 @@ app.get('/pair', async (req, res) => {
             printQRInTerminal: false,
             logger: pino({ level: "fatal" }),
             browser: ["Ubuntu", "Chrome", "110.0.5481.177"],
-            // --- CONFIGURATION POUR ATTENDRE 1 MINUTE ---
-            connectTimeoutMs: 60000, // Attend 60s pour la connexion initiale
-            defaultQueryTimeoutMs: 60000, // Attend 60s pour les réponses de WhatsApp
-            keepAliveIntervalMs: 10000 // Envoie un signal toutes les 10s pour ne pas que Render s'endorme
+            // --- AJUSTEMENT À 30 SECONDES ---
+            connectTimeoutMs: 30000, 
+            defaultQueryTimeoutMs: 30000,
+            keepAliveIntervalMs: 10000 
         });
 
         if (!sock.authState.creds.registered) {
-            await delay(3000); 
+            await delay(2500); 
             const code = await sock.requestPairingCode(phone);
             if (!res.headersSent) res.send({ code: code });
         }
@@ -49,15 +49,15 @@ app.get('/pair', async (req, res) => {
                 const sessionID = Buffer.from(JSON.stringify(sock.authState.creds)).toString('base64');
                 await sock.sendMessage(sock.user.id, { text: `OTSUTSUKI-MD_SESSION_ID_${sessionID}` });
                 
-                // On laisse la session active 30s de plus pour finaliser
-                await delay(30000);
+                // Petit délai de sécurité avant nettoyage
+                await delay(5000);
                 try { fs.rmSync(authPath, { recursive: true, force: true }); } catch (e) {}
             }
         });
 
     } catch (err) {
         console.error("ERREUR:", err);
-        if (!res.headersSent) res.status(500).send({ error: "Délai dépassé, réessayez." });
+        if (!res.headersSent) res.status(500).send({ error: "Délai de 30s dépassé." });
     }
 });
 
@@ -65,6 +65,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Augmente le timeout du serveur HTTP d'Express à 2 minutes
+// Le serveur HTTP attendra 45s max pour laisser de la marge
 const server = app.listen(PORT, () => console.log(`🚀 Serveur actif sur le port ${PORT}`));
-server.timeout = 120000;
+server.timeout = 45000;
