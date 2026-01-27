@@ -11,7 +11,7 @@
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Owner](https://img.shields.io/badge/Owner-Celes-red)
 ### 🔑 CONNEXION
-📱 **Générer SESSION_ID** : [Cliquez ici pour QR / Pair Code](https://votre-app-session.onrender.com)
+📱 **Générer SESSION_ID** : [Cliquez ici pour QR / Pair Code](http://localhost:3000)
   ### 📢 REJOINDRE LA COMMUNAUTÉ
 Si vous avez besoin d'aide ou si vous voulez suivre les mises à jour :
 
