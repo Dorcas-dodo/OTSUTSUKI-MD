@@ -1,7 +1,17 @@
 # ⚡ OTSUTSUKI-MD ⚡
 
 <p align="center">
-  <img src="https://telegra.ph/file/votre-image.jpg" width="200" alt="Otsutsuki Logo">
+  <img src="https://raw.githubusercontent.com/Dorcas-dodo/OTSUTSUKI-MD/master/media/menu.jpg" width="250" alt="OTSUTSUKI Logo">
+</p>
+
+<h1 align="center">OTSUTSUKI-MD V1</h1>
+
+<p align="center">
+  <a href="https://github.com/Dorcas-dodo/OTSUTSUKI-MD">
+    <img src="https://img.shields.io/badge/Status-En%20Ligne-brightgreen?style=for-the-badge" alt="Status">
+  </a>
+  <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Owner-Celes-orange?style=for-the-badge" alt="Owner">
 </p>
 
 ---
