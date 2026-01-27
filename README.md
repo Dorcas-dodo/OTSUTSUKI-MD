@@ -10,7 +10,9 @@
 ![Status](https://img.shields.io/badge/Status-En%20Ligne-brightgreen)
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Owner](https://img.shields.io/badge/Owner-Celes-red)
-
+## 🔗 LIENS UTILES
+- 📱 [Générer SESSION_ID (Pair Code/QR)](https://ton-lien-ici.com)
+- 👥 [Groupe de Support](https://wa.me/votre-numéro)
 ### 🚀 Fonctionnalités
 - 🛡️ **Antidelete** : Récupère les messages supprimés instantanément.
 - 👁️ **Auto-Status** : Regarde les statuts de tes contacts automatiquement.
