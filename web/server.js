@@ -1,5 +1,5 @@
 const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys");
+const { default: makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore, DisconnectReason } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const fs = require("fs");
 const path = require("path");
@@ -10,11 +10,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(__dirname));
 
 app.get('/pair', async (req, res) => {
-    const phone = req.query.phone;
+    let phone = req.query.phone;
     if (!phone) return res.send({ error: "Numéro requis" });
+    phone = phone.replace(/[^0-9]/g, '');
 
-    // MODIFICATION ICI : Utilisation de /tmp pour les permissions Render
-    const authPath = path.join('/tmp', 'otsutsuki_auth_' + Date.now());
+    const authPath = path.join('/tmp', 'auth_' + phone);
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     
     try {
@@ -25,40 +25,39 @@ app.get('/pair', async (req, res) => {
             },
             printQRInTerminal: false,
             logger: pino({ level: "fatal" }),
-            browser: ["Ubuntu", "Chrome", "20.0.04"]
+            browser: ["Ubuntu", "Chrome", "110.0.5481.177"],
+            // --- CONFIGURATION POUR ATTENDRE 1 MINUTE ---
+            connectTimeoutMs: 60000, // Attend 60s pour la connexion initiale
+            defaultQueryTimeoutMs: 60000, // Attend 60s pour les réponses de WhatsApp
+            keepAliveIntervalMs: 10000 // Envoie un signal toutes les 10s pour ne pas que Render s'endorme
         });
 
         if (!sock.authState.creds.registered) {
-            await delay(2000); // Un peu plus de délai pour Render
+            await delay(3000); 
             const code = await sock.requestPairingCode(phone);
             if (!res.headersSent) res.send({ code: code });
         }
 
         sock.ev.on('creds.update', saveCreds);
+        
         sock.ev.on("connection.update", async (s) => {
-            const { connection, lastDisconnect } = s;
+            const { connection } = s;
             
             if (connection === "open") {
+                console.log("✅ Connexion réussie !");
                 await delay(5000);
                 const sessionID = Buffer.from(JSON.stringify(sock.authState.creds)).toString('base64');
                 await sock.sendMessage(sock.user.id, { text: `OTSUTSUKI-MD_SESSION_ID_${sessionID}` });
-                console.log("✅ Session générée avec succès !");
                 
-                // Nettoyage automatique
-                setTimeout(() => {
-                    try { fs.rmSync(authPath, { recursive: true, force: true }); } catch (e) {}
-                }, 10000);
-            }
-
-            // Si la connexion échoue, on log l'erreur pour voir le problème
-            if (connection === "close") {
-                console.log("❌ Connexion fermée. Raison possible : Code expiré ou mauvais numéro.");
+                // On laisse la session active 30s de plus pour finaliser
+                await delay(30000);
+                try { fs.rmSync(authPath, { recursive: true, force: true }); } catch (e) {}
             }
         });
 
     } catch (err) {
-        console.error("ERREUR SERVEUR:", err);
-        if (!res.headersSent) res.status(500).send({ error: "Erreur serveur" });
+        console.error("ERREUR:", err);
+        if (!res.headersSent) res.status(500).send({ error: "Délai dépassé, réessayez." });
     }
 });
 
@@ -66,4 +65,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`🚀 Serveur lancé sur le port ${PORT}`));
+// Augmente le timeout du serveur HTTP d'Express à 2 minutes
+const server = app.listen(PORT, () => console.log(`🚀 Serveur actif sur le port ${PORT}`));
+server.timeout = 120000;
