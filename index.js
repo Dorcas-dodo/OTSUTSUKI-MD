@@ -127,11 +127,11 @@ async function startBot() {
                 try {
                     ppuser = await sock.profilePictureUrl(num, 'image');
                 } catch {
-                    ppuser = 'https://files.catbox.moe/otsutsuki.jpg'; 
+                    ppuser = 'https://raw.githubusercontent.com/Dorcas-dodo/OTSUTSUKI-MD/master/media/menu.jpg'; 
                 }
 
                 // SI UN MEMBRE REJOINT
-                if (action === 'add' && config.WELCOME) {
+                if (action === 'add' && (config.WELCOME === "true" || config.WELCOME === true)) {
                     const welcomeMsg = `╔════════════════════╗\n   ⛩️  *BIENVENUE AU CLAN* ⛩️\n╚════════════════════╝\n\n🏮 *Shinobi :* @${num.split('@')[0]}\n🌀 *Clan :* ${metadata.subject}\n🌑 *Rang :* Nouvel Aspirant\n\n📜 *DESCRIPTION DU GROUPE*\n${metadata.desc || "Respectez le code des Otsutsuki."}\n\n🌊 _"Ton voyage vers la puissance commence ici."_\n   🏮 *OTSUTSUKI-MD SYSTEM* 🏮`;
 
                     await sock.sendMessage(id, {
@@ -153,7 +153,7 @@ async function startBot() {
                 }
                 
                 // SI UN MEMBRE QUITTE
-                else if (action === 'remove' && config.WELCOME) {
+                else if (action === 'remove' && (config.GOODBYE === "true" || config.GOODBYE === true)) {
                     const goodbyeMsg = `╔════════════════════╗\n    ⛩️  *EXIL DU CLAN* ⛩️\n╚════════════════════╝\n\n🌑 *Shinobi :* @${num.split('@')[0]}\n🌀 *Clan :* ${metadata.subject}\n📜 *Status :* Déserteur (Nukenin)\n\n🌊 _"Ton voyage s'arrête ici. Que l'ombre guide tes pas."_\n\n🏮 *OTSUTSUKI-MD SYSTEM* 🏮`;
 
                     await sock.sendMessage(id, {
