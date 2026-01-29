@@ -8,7 +8,12 @@ module.exports = async (sock, chatUpdate) => {
         if (m.key.fromMe) return;
 
         const from = m.key.remoteJid;
-        const text = m.message.conversation || m.message.extendedTextMessage?.text || "";
+        // On récupère le texte peu importe le type de message
+        const text = m.message.conversation || 
+                     m.message.extendedTextMessage?.text || 
+                     m.message.imageMessage?.caption || 
+                     m.message.videoMessage?.caption || "";
+                     
         const prefix = ".";
 
         if (!text.startsWith(prefix)) return;
@@ -16,14 +21,17 @@ module.exports = async (sock, chatUpdate) => {
         const args = text.slice(prefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
         
-        // Chemin vers le fichier de la commande
+        // Chemin absolu vers le dossier commands
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
             console.log(`✨ Exécution de : ${cmdName}`);
+            
+            // OPTIMISATION : Supprimer le cache pour recharger le fichier proprement
+            delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
-            // On essaie d'exécuter la commande (gestion des différents formats d'exports)
+            // Exécution selon le format d'export
             if (typeof command === 'function') {
                 await command(sock, m, args);
             } else if (command.execute) {
@@ -33,9 +41,14 @@ module.exports = async (sock, chatUpdate) => {
             }
         } else {
             console.log(`❓ Commande inconnue : ${cmdName}`);
+            // Optionnel : décommenter pour informer l'utilisateur
+            // await sock.sendMessage(from, { text: `*${cmdName}* n'existe pas dans la base Otsutsuki.` });
         }
 
     } catch (err) {
         console.error("⚠️ Erreur Handler :", err);
+        // Optionnel : envoyer l'erreur sur WhatsApp pour débugger plus vite
+        // const from = chatUpdate.messages[0].key.remoteJid;
+        // await sock.sendMessage(from, { text: "Une erreur est survenue dans le traitement de la commande." });
     }
 };
