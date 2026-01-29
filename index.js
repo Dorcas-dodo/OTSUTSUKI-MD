@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8000;
 let currentQR = null;
 let sock;
 
-// --- INTERFACE WEB ---
+// --- INTERFACE WEB (UI HYBRIDE) ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -23,47 +23,51 @@ app.get('/', (req, res) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>OTSUTSUKI-MD - Connexion</title>
+            <title>OTSUTSUKI-MD - Éveil</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
                 body { background: #050505; color: #fff; font-family: sans-serif; }
-                .glass { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px); border: 1px solid #8e44ad; }
+                .glass { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px); border: 1px solid #8e44ad; box-shadow: 0 0 20px rgba(142, 68, 173, 0.3); }
                 .qr-box { background: white; padding: 10px; border-radius: 10px; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+                .shining { animation: glow 2s infinite alternate; }
+                @keyframes glow { from { text-shadow: 0 0 5px #fff, 0 0 10px #8e44ad; } to { text-shadow: 0 0 10px #fff, 0 0 20px #8e44ad; } }
             </style>
         </head>
         <body class="flex items-center justify-center min-h-screen">
             <div class="glass p-8 rounded-3xl w-full max-w-md text-center">
-                <h1 class="text-3xl font-bold font-['Orbitron'] mb-2">OTSUTSUKI <span class="text-purple-500">MD</span></h1>
-                <p class="text-gray-400 text-sm mb-6">SYSTÈME DE CONNEXION HYBRIDE</p>
+                <h1 class="text-3xl font-bold font-['Orbitron'] mb-2 shining">OTSUTSUKI <span class="text-purple-500">MD</span></h1>
+                <p class="text-gray-400 text-sm mb-6 tracking-widest">S Y S T È M E  D ' É V E I L</p>
 
                 <div class="mb-8">
-                    <p class="mb-3 text-sm">Scanner le QR Code :</p>
+                    <p class="mb-3 text-xs uppercase text-gray-500">Flux de synchronisation QR</p>
                     <div id="qr-display" class="qr-box mx-auto w-52 h-52">
-                        <span class="text-black text-xs">Génération du flux...</span>
+                        <span class="text-black text-xs animate-pulse">Initialisation...</span>
                     </div>
                 </div>
 
                 <div class="border-t border-gray-800 my-6"></div>
 
                 <div>
-                    <p class="mb-3 text-sm text-gray-400">Ou utiliser le Code de Couplage :</p>
-                    <input type="text" id="phone" placeholder="24206461XXXX" class="w-full bg-black/50 border border-gray-700 p-3 rounded-lg mb-4 text-center">
-                    <button onclick="getPairCode()" class="bg-purple-600 hover:bg-purple-700 w-full py-3 rounded-lg font-bold transition">Générer le Code</button>
-                    <div id="pair-display" class="mt-4 text-2xl font-bold text-cyan-400 tracking-widest hidden"></div>
+                    <p class="mb-3 text-sm text-gray-400">Couplage par Code Ninja :</p>
+                    <input type="text" id="phone" placeholder="242068079834" class="w-full bg-black/50 border border-gray-700 p-3 rounded-lg mb-4 text-center focus:outline-none focus:border-purple-500 transition">
+                    <button onclick="getPairCode()" class="bg-purple-600 hover:bg-purple-700 w-full py-3 rounded-lg font-bold transition active:scale-95">Générer le Code</button>
+                    <div id="pair-display" class="mt-4 text-2xl font-bold text-cyan-400 tracking-[0.3em] hidden"></div>
                 </div>
             </div>
 
             <script>
                 async function checkStatus() {
-                    const res = await fetch('/get-qr');
-                    const data = await res.json();
-                    const qrDiv = document.getElementById('qr-display');
-                    if (data.qr) {
-                        qrDiv.innerHTML = '<img src="' + data.qr + '" class="w-full h-full">';
-                    } else if (data.connected) {
-                        qrDiv.innerHTML = '<b class="text-green-600">Connecté ✅</b>';
-                    }
+                    try {
+                        const res = await fetch('/get-qr');
+                        const data = await res.json();
+                        const qrDiv = document.getElementById('qr-display');
+                        if (data.qr) {
+                            qrDiv.innerHTML = '<img src="' + data.qr + '" class="w-full h-full">';
+                        } else if (data.connected) {
+                            qrDiv.innerHTML = '<b class="text-green-600 text-xl font-bold italic">ACTIF ✅</b>';
+                        }
+                    } catch (e) {}
                 }
                 setInterval(checkStatus, 5000);
 
@@ -106,28 +110,43 @@ async function startBot() {
 
         if (connection === 'open') {
             currentQR = "connected";
-            console.log("🏮 OTSUTSUKI-MD : Connecté avec succès !");
+            console.log("🏮 OTSUTSUKI-MD : Éveil du système réussi !");
 
-            // --- NOTIFICATION D'IDENTIFICATION ---
             const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
             const userName = sock.user.name || "Shinobi";
             
-            const notifyMsg = `⛩️ *NOTIF DE DÉPLOIEMENT* ⛩️\n\n` +
-                              `👤 *Nom :* ${userName}\n` +
-                              `📱 *Numéro :* @${userJid.split('@')[0]}\n` +
-                              `🧬 *Statut :* Session Active\n\n` +
-                              `🌑 _L'oeil du Otsutsuki est désormais ouvert sur ce compte._`;
+            // --- MESSAGE D'ÉVEIL PERSONNALISÉ ---
+            const notifyMsg = `✨ *✧━━『 ⛩️ OTSUTSUKI-MD ⛩️ 』━━✧* ✨\n\n` +
+                              `  💠 *S Y S T È M E  É V E I L L É*\n\n` +
+                              `👤 *HÔTE :* \`\`\`${userName}\`\`\`\n` +
+                              `📱 *LIGNÉE :* @${userJid.split('@')[0]}\n` +
+                              `🧬 *STATUT :* Synchronisation 100%\n` +
+                              `🌐 *RÉGION :* Brazzaville, CG\n\n` +
+                              `👁️‍🗨️ _"L'œil céleste s'est ouvert. Votre chakra est désormais lié au clan Otsutsuki. Le monde est sous votre contrôle."_\n\n` +
+                              `*© 2026 OTSUTSUKI LEGACY*`;
 
-            // Envoi de la notification au compte qui vient de scanner
+            // Envoi de la notification avec Vignette Large
             await sock.sendMessage(userJid, { 
                 text: notifyMsg, 
-                mentions: [userJid] 
+                mentions: [userJid],
+                contextInfo: {
+                    externalAdReply: {
+                        title: "ＯＴＳＵＴＳＵＫＩ  ＡＣＴＩＶＡＴＩＯＮ",
+                        body: "Le pouvoir divin est en ligne.",
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        thumbnailUrl: config.MENU_IMG,
+                        sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
+                    }
+                }
             });
 
-            // Envoi de la notification à l'owner (si différent)
+            // Alerte discrète à l'Owner (si scan par un tiers)
             const ownerJid = config.OWNER_NUMBER.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             if (userJid !== ownerJid) {
-                await sock.sendMessage(ownerJid, { text: `📢 *Alerte :* Le bot a été scanné par ${userName} (${userJid.split('@')[0]})` });
+                await sock.sendMessage(ownerJid, { 
+                    text: `👁️‍🗨️ *Alerte Clan :* Une nouvelle entité (@${userJid.split('@')[0]}) a activé le bot.` 
+                });
             }
         }
 
@@ -157,6 +176,6 @@ app.get('/pair', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log("🌐 Serveur Web sur port " + PORT);
+    console.log("🌐 Serveur OTSUTSUKI sur port " + PORT);
     startBot();
 });
