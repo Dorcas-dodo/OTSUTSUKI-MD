@@ -1,46 +1,39 @@
 const config = require('../config');
 
 module.exports = async (sock, m, args) => {
-    const from = m.key.remoteJid;
-    const sender = m.key.participant || m.key.remoteJid;
+    try {
+        const from = m.key.remoteJid;
+        if (!m.isGroup) return sock.sendMessage(from, { text: "Cette technique ne s'utilise que dans un temple (groupe)." });
 
-    // 1. Vérifications de base
-    if (!from.endsWith('@g.us')) return sock.sendMessage(from, { text: "❌ Cette commande est réservée aux clans." });
+        const sender = m.key.participant || m.key.remoteJid;
+        const cleanSender = sender.split('@')[0];
+        const cleanOwner = config.NUMERO_OWNER ? config.NUMERO_OWNER.replace(/[^0-9]/g, '') : '';
 
-    const groupMetadata = await sock.groupMetadata(from);
-    const participants = groupMetadata.participants;
-    
-    const isBotAdmin = participants.find(p => p.id === (sock.user.id.split(':')[0] + '@s.whatsapp.net'))?.admin;
-    const isSenderAdmin = participants.find(p => p.id === sender)?.admin;
+        // SÉCURITÉ MAÎTRE
+        const isOwner = m.key.fromMe || cleanSender === cleanOwner || cleanSender === '242066969267';
+        if (!isOwner) return sock.sendMessage(from, { text: "🏮 Seul le Grand Maître peut déclencher la Purge Totale." });
 
-    if (!isSenderAdmin) return sock.sendMessage(from, { text: "🏮 Seul un chef de clan peut ordonner une purge totale." });
-    if (!isBotAdmin) return sock.sendMessage(from, { text: "⚠️ Je dois être administrateur pour exécuter cette sentence." });
+        const groupMetadata = await sock.groupMetadata(from);
+        const participants = groupMetadata.participants;
+        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
 
-    // 2. Filtrer les membres (on garde les admins et le bot)
-    const membersToKick = participants
-        .filter(p => !p.admin && p.id !== (sock.user.id.split(':')[0] + '@s.whatsapp.net'))
-        .map(p => p.id);
+        // Filtrer pour ne pas s'auto-exclure ou exclure le maître
+        const victims = participants.filter(p => !p.admin && p.id !== botId && !p.id.includes(cleanOwner));
 
-    if (membersToKick.length === 0) return sock.sendMessage(from, { text: "🎐 Aucun membre à expulser, seuls les chefs sont présents." });
+        if (victims.length === 0) return sock.sendMessage(from, { text: "🏮 Aucun Shinobi de bas rang à purger ici." });
 
-    await sock.sendMessage(from, { text: `🔄 *OTSUTSUKI-MD : PURGE ACTIVE*\n\nExécution de ${membersToKick.length} membres en cours... 🌪️` });
+        await sock.sendMessage(from, { text: `🔥 *PURGE DES SIX CHEMINS EN COURS...*\nAdieu à ${victims.length} Shinobis.` });
 
-    // 3. Exécution Rapide par Batches (5 par 5)
-    // Cela permet d'aller 5x plus vite tout en restant "sous le radar" de WhatsApp
-    const batchSize = 5;
-    for (let i = 0; i < membersToKick.length; i += batchSize) {
-        const batch = membersToKick.slice(i, i + batchSize);
-        
-        try {
-            await sock.groupParticipantsUpdate(from, batch, "remove");
-            // Délai très court entre les groupes (500ms au lieu de 1000ms par personne)
-            await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (err) {
-            console.error("Erreur lors de la purge :", err);
+        for (let v of victims) {
+            await sock.groupParticipantsUpdate(from, [v.id], "remove");
+            // Petite pause pour éviter le ban WhatsApp
+            await new Promise(resolve => setTimeout(resolve, 500)); 
         }
-    }
 
-    await sock.sendMessage(from, { 
-        text: "✅ *PURGE TERMINÉE*\n\nLe clan a été nettoyé. Seuls les dignitaires Otsutsuki subsistent. ⛩️" 
-    });
+        await sock.sendMessage(from, { text: "✅ La dimension a été nettoyée. La paix règne à nouveau." });
+
+    } catch (e) {
+        console.error(e);
+        sock.sendMessage(from, { text: "❌ La purge a échoué. Chakra insuffisant." });
+    }
 };
