@@ -9,13 +9,15 @@ const {
 const pino = require("pino");
 const qrcodeTerminal = require('qrcode-terminal');
 const QRCode = require('qrcode');
+// RÉACTIVATION : Importation du fichier de gestion des messages
+const messageHandler = require('./messages.upsert');
 
 const app = express();
 const PORT = process.env.PORT || 8000; 
 let currentQR = null;
 let sock;
 
-// --- INTERFACE WEB STYLEE ---
+// --- INTERFACE WEB ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -41,7 +43,6 @@ app.get('/', (req, res) => {
                 <img src="https://raw.githubusercontent.com/Dorcas-dodo/OTSUTSUKI-MD/master/media/menu.jpg" class="rounded-full w-24 h-24 object-cover mx-auto mb-4 border-2 border-purple-500" alt="Logo">
                 <h1 class="text-3xl font-bold font-['Orbitron'] text-white">OTSUTSUKI <span class="text-purple-500">MD</span></h1>
                 <p class="text-xs uppercase tracking-[0.3em] text-gray-400 mb-8 mt-2">System Link V1</p>
-                
                 <div class="space-y-6">
                     <input type="text" id="phone" placeholder="24206461XXXX" class="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-center outline-none focus:border-cyan-400">
                     <button onclick="getPairCode()" id="pairBtn" class="btn-cyber w-full py-4 rounded-xl font-bold flex items-center justify-center gap-3">
@@ -99,7 +100,6 @@ async function startBot() {
         const { connection, qr, lastDisconnect } = update;
         if (qr) {
             currentQR = await QRCode.toDataURL(qr);
-            qrcodeTerminal.generate(qr, { small: true });
         }
         if (connection === 'open') {
             currentQR = null;
@@ -111,12 +111,11 @@ async function startBot() {
         }
     });
 
-    // Le handler de message est désactivé car le fichier est manquant
-    /* sock.ev.on('messages.upsert', async (chatUpdate) => {
-        // await messageHandler(sock, chatUpdate);
-    }); 
-    */
-} // <--- L'accolade manquante était ici !
+    // RÉACTIVATION : Le bot va maintenant écouter les messages entrants
+    sock.ev.on('messages.upsert', async (chatUpdate) => {
+        await messageHandler(sock, chatUpdate);
+    });
+}
 
 // --- API ---
 app.get('/get-qr', (req, res) => res.json({ qr: currentQR }));
