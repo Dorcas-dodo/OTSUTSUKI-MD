@@ -9,68 +9,70 @@ const {
 const pino = require("pino");
 const qrcodeTerminal = require('qrcode-terminal');
 const QRCode = require('qrcode');
-const messageHandler = require('./messages.upsert');
 
 const app = express();
-// Priorité au port fourni par Koyeb
 const PORT = process.env.PORT || 8000; 
 let currentQR = null;
 let sock;
 
-// --- INTERFACE WEB ---
+// --- INTERFACE WEB STYLEE ---
 app.get('/', (req, res) => {
     res.send(`
-        <html>
-            <head>
-                <title>OTSUTSUKI-MD - CONNEXION</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body { background: #0a0a0a; color: #dcdcdc; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
-                    .card { background: #111; padding: 30px; border-radius: 20px; max-width: 450px; margin: auto; border: 1px solid #8e44ad; box-shadow: 0 0 15px #8e44ad; }
-                    h2 { color: #8e44ad; letter-spacing: 2px; }
-                    .method { background: #1a1a1a; padding: 15px; margin: 20px 0; border-radius: 12px; border: 1px solid #333; }
-                    button { background: #8e44ad; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; }
-                    button:hover { background: #fff; color: #8e44ad; }
-                    input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #8e44ad; background: #000; color: white; text-align: center; }
-                    #qr-img { background: white; padding: 10px; margin-top: 15px; display: none; margin-left: auto; margin-right: auto; border-radius: 5px; }
-                    #pair-display { font-size: 1.8em; color: #2ecc71; margin-top: 15px; font-weight: bold; letter-spacing: 3px; }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <img src="https://i.ibb.co/vz6mD6P/logo.png" width="80" style="border-radius: 50%;">
-                    <h2>OTSUTSUKI-MD V1</h2>
-                    <div class="method">
-                        <p>🔹 OPTION 1 : SCANNER QR</p>
-                        <button onclick="getQR()">AFFICHER LE QR CODE</button>
-                        <img id="qr-img" width="220">
-                    </div>
-                    <div class="method">
-                        <p>🔹 OPTION 2 : PAIRING CODE</p>
-                        <input type="text" id="phone" placeholder="Numéro (ex: 24206xxxx)">
-                        <button onclick="getPair()">GÉNÉRER MON CODE</button>
-                        <div id="pair-display"></div>
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>OTSUTSUKI-MD - Connexion</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap');
+                body { background: #050505; color: #e0e0e0; font-family: 'Rajdhani', sans-serif; min-height: 100vh; }
+                .glass-card { background: rgba(15, 15, 15, 0.7); backdrop-filter: blur(15px); border-radius: 24px; border: 1px solid rgba(142, 68, 173, 0.3); }
+                .btn-cyber { background: linear-gradient(45deg, #8e44ad, #2575fc); transition: all 0.3s; font-family: 'Orbitron', sans-serif; }
+                .btn-cyber:hover { box-shadow: 0 0 20px rgba(142, 68, 173, 0.6); transform: translateY(-2px); }
+                .loader { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #00f2fe; border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+        </head>
+        <body class="flex items-center justify-center p-6">
+            <div class="glass-card w-full max-w-md p-10 text-center">
+                <img src="https://raw.githubusercontent.com/Dorcas-dodo/OTSUTSUKI-MD/master/media/menu.jpg" class="rounded-full w-24 h-24 object-cover mx-auto mb-4 border-2 border-purple-500" alt="Logo">
+                <h1 class="text-3xl font-bold font-['Orbitron'] text-white">OTSUTSUKI <span class="text-purple-500">MD</span></h1>
+                <p class="text-xs uppercase tracking-[0.3em] text-gray-400 mb-8 mt-2">System Link V1</p>
+                
+                <div class="space-y-6">
+                    <input type="text" id="phone" placeholder="24206461XXXX" class="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-center outline-none focus:border-cyan-400">
+                    <button onclick="getPairCode()" id="pairBtn" class="btn-cyber w-full py-4 rounded-xl font-bold flex items-center justify-center gap-3">
+                        <span id="btnText">Générer le Code</span>
+                        <div id="loader" class="loader"></div>
+                    </button>
+                    <div id="result-container" class="hidden mt-4">
+                        <div id="pair-display" class="text-3xl font-bold text-cyan-400 tracking-[0.2em] font-['Orbitron']"></div>
                     </div>
                 </div>
-                <script>
-                    async function getQR() {
-                        const res = await fetch('/get-qr');
-                        const data = await res.json();
-                        if(data.qr) {
-                            document.getElementById('qr-img').src = data.qr;
-                            document.getElementById('qr-img').style.display = 'block';
-                        } else { alert("QR non disponible. Patientez ou rafraîchissez."); }
-                    }
-                    async function getPair() {
-                        const num = document.getElementById('phone').value;
-                        if(!num) return alert("Entrez un numéro !");
-                        document.getElementById('pair-display').innerText = "Génération...";
-                        const res = await fetch('/pair?phone=' + num);
-                        const data = await res.json();
-                        document.getElementById('pair-display').innerText = data.code || data.error;
-                    }
-                </script>
-            </body>
+            </div>
+            <script>
+                async function getPairCode() {
+                    const phone = document.getElementById('phone').value;
+                    const resDiv = document.getElementById('pair-display');
+                    const resCont = document.getElementById('result-container');
+                    const loader = document.getElementById('loader');
+                    if (!phone) return alert("Numéro requis !");
+                    loader.style.display = "block";
+                    try {
+                        const response = await fetch('/pair?phone=' + phone.replace(/[^0-9]/g, ''));
+                        const data = await response.json();
+                        loader.style.display = "none";
+                        if (data.code) {
+                            resCont.classList.remove('hidden');
+                            resDiv.innerText = data.code;
+                        } else { alert("Erreur serveur"); }
+                    } catch (err) { loader.style.display = "none"; alert("Serveur injoignable"); }
+                }
+            </script>
+        </body>
         </html>
     `);
 });
@@ -86,9 +88,7 @@ async function startBot() {
         },
         printQRInTerminal: true,
         logger: pino({ level: "fatal" }),
-        // Modification : Identification plus stable pour les serveurs Linux
         browser: ["Ubuntu", "Chrome", "20.0.04"],
-        // Ajout : Délai d'attente prolongé pour éviter les échecs de connexion sur Koyeb
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 10000
     });
@@ -103,19 +103,20 @@ async function startBot() {
         }
         if (connection === 'open') {
             currentQR = null;
-            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ AVEC SUCCÈS !");
+            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ !");
         }
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log("❌ Connexion perdue. Reconnexion :", shouldReconnect);
             if (shouldReconnect) startBot();
         }
     });
 
-    sock.ev.on('messages.upsert', async (chatUpdate) => {
-        await messageHandler(sock, chatUpdate);
-    });
-}
+    // Le handler de message est désactivé car le fichier est manquant
+    /* sock.ev.on('messages.upsert', async (chatUpdate) => {
+        // await messageHandler(sock, chatUpdate);
+    }); 
+    */
+} // <--- L'accolade manquante était ici !
 
 // --- API ---
 app.get('/get-qr', (req, res) => res.json({ qr: currentQR }));
@@ -124,16 +125,13 @@ app.get('/pair', async (req, res) => {
     let phone = req.query.phone;
     if (!phone) return res.json({ error: "Numéro requis" });
     try {
-        // Nettoyage du numéro et demande du code
         const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
         res.json({ code: code });
     } catch (err) { 
-        console.log(err);
-        res.json({ error: "Erreur (vérifiez les logs)" }); 
+        res.json({ error: "Erreur de génération" }); 
     }
 });
 
-// Lancement du serveur
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Serveur prêt sur le port ${PORT}`);
     startBot();
