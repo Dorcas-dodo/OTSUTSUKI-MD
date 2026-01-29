@@ -1,20 +1,40 @@
-module.exports = {
-    name: "tag",
-    async execute(sock, from, msg, args, config) {
-        if (!from.endsWith('@g.us')) return sock.sendMessage(from, { text: "❌ Cette commande est réservée aux groupes." });
+const config = require('../config');
 
-        const metadata = await sock.groupMetadata(from);
-        const participants = metadata.participants;
-        const message = args.join(" ") || "📢 Message d'OTSUTSUKI-MD";
+module.exports = async (sock, m, args) => {
+    try {
+        const from = m.key.remoteJid;
+        const isGroup = from.endsWith('@g.us');
 
-        let text = `*〔 TAG ALL 〕*\n\n*Message:* ${message}\n\n`;
-        let mentions = [];
-
-        for (let p of participants) {
-            text += `🔹 @${p.id.split('@')[0]}\n`;
-            mentions.push(p.id);
+        // 1. Vérifier si on est bien dans un groupe
+        if (!isGroup) {
+            return await sock.sendMessage(from, { text: "❌ Cette commande n'est utilisable que dans un groupe." });
         }
 
-        await sock.sendMessage(from, { text: text, mentions: mentions }, { quoted: msg });
+        // 2. Vérifier les permissions (Admin ou Owner)
+        const groupMetadata = await sock.groupMetadata(from);
+        const participants = groupMetadata.participants;
+        const sender = m.key.participant || m.key.remoteJid;
+        const isAdmin = participants.find(p => p.id === sender)?.admin;
+        const isOwner = sender.includes(config.OWNER_NUMBER) || m.key.fromMe;
+
+        if (!isAdmin && !isOwner) {
+            return await sock.sendMessage(from, { text: "🚷 Seuls les administrateurs du clan peuvent utiliser le Tag." });
+        }
+
+        // 3. Récupérer le message à diffuser
+        const message = args.join(" ") || "Message d'alerte Otsutsuki ! 🏮";
+        
+        // 4. Créer la liste des mentions (tous les participants)
+        const mentions = participants.map(p => p.id);
+
+        // 5. Envoyer le message avec les mentions invisibles
+        await sock.sendMessage(from, {
+            text: `📢 *ANNONCE DU CLAN* 📢\n\n${message}`,
+            mentions: mentions
+        }, { quoted: m });
+
+    } catch (e) {
+        console.error("❌ Erreur Tag :", e);
+        await sock.sendMessage(m.key.remoteJid, { text: "L'œil du Rinnegan a échoué à taguer le groupe." });
     }
 };
