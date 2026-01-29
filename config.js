@@ -2,7 +2,7 @@ module.exports = {
     // 🔗 Paramètres de base
     SESSION_ID: process.env.SESSION_ID || "", 
     PREFIXE: process.env.PREFIXE || ".",
-    OWNER_NAME: process.env.NOM_OWNER || "Dorcas-dodo",
+    OWNER_NAME: process.env.NOM_OWNER || "Indra Otsutsuki",
     OWNER_NUMBER: process.env.NUMERO_OWNER || "242068079834",
 
     // ⚙️ Paramètres de fonctionnement
@@ -20,3 +20,4 @@ module.exports = {
     // Lien de secours (si le fichier local échoue)
     URL_RECURS: "https://files.catbox.moe/dyox3v.jpg" 
 };
+
