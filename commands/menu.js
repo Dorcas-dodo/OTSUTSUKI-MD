@@ -7,22 +7,20 @@ module.exports = async (sock, m, args) => {
     try {
         const from = m.key.remoteJid;
         const sender = m.key.participant || m.key.remoteJid;
-        const prefix = config.PREFIXE;
-        const user = sender.split('@')[0];
         
-        // --- 📊 INFOS TEMPS RÉEL (Pré-calculées) ---
-        const date = moment.tz('Africa/Brazzaville').format('DD/MM/YYYY');
-        const time = moment.tz('Africa/Brazzaville').format('HH:mm:ss');
+        // --- 📊 CALCULS ULTRA-RAPIDES ---
         const uptime = process.uptime();
         const uptimeString = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`;
+        const date = moment.tz('Africa/Brazzaville').format('DD/MM/YYYY');
+        const time = moment.tz('Africa/Brazzaville').format('HH:mm:ss');
 
-        // --- 📂 LOGIQUE DE TRIAGE RAPIDE ---
+        // --- 📂 LOGIQUE DE TRIAGE (Cache-friendly) ---
         const commandsDir = path.join(process.cwd(), 'commands');
         const files = fs.readdirSync(commandsDir).filter(file => file.endsWith('.js'));
         
         const categories = { general: [], admin: [], protect: [], ninja: [], owner: [] };
 
-        files.forEach(file => {
+        for (const file of files) {
             const cmd = file.replace('.js', '');
             const styleCmd = `  ◦ ${cmd.toUpperCase()}`;
             if (['ping', 'infos', 'runtime', 'menu', 'test', 'speed'].includes(cmd)) categories.general.push(styleCmd);
@@ -30,80 +28,71 @@ module.exports = async (sock, m, args) => {
             else if (cmd.startsWith('anti') || ['ban', 'clear', 'warn'].includes(cmd)) categories.protect.push(styleCmd);
             else if (['sticker', 'ai', 'vv', 'attp', 'edit', 'cls'].includes(cmd)) categories.ninja.push(styleCmd);
             else categories.owner.push(styleCmd);
-        });
+        }
 
         const texteMenu = `
 ┏━━〔 *OTSUTSUKI-MD* 〕━━┓
-┃ 👤 *SHINOBI :* @${user}
+┃ 👤 *SHINOBI :* @${sender.split('@')[0]}
 ┃ 🧬 *CLAN :* ${config.OWNER_NAME}
-┃ 🏮 *PREFIX :* ${prefix}
+┃ 🏮 *PREFIX :* ${config.PREFIXE}
 ┃ ⏱️ *UPTIME :* ${uptimeString}
 ┃ 📡 *MODE :* ${config.MODE}
 ┗━━━━━━━━━━━━━━━━━━━━┛
 
-╔════════════════════╗
-    *DASHBOARD COMMANDS*
-╚════════════════════╝
- 📅 *DATE :* ${date}
- ⏳ *HEURE :* ${time}
- 🚀 *COMMANDES :* ${files.length}
+🚀 *COMMANDES :* ${files.length}
+📅 *DATE :* ${date} | ⏳ *HEURE :* ${time}
 
 💠 *「 GÉNÉRAL 」*
-${categories.general.sort().join('\n') || '  ◦ (Vide)'}
+${categories.general.sort().join('\n')}
 
 💠 *「 ADMIN & CLAN 」*
-${categories.admin.sort().join('\n') || '  ◦ (Vide)'}
+${categories.admin.sort().join('\n')}
 
 💠 *「 PROTECTION 」*
-${categories.protect.sort().join('\n') || '  ◦ (Vide)'}
+${categories.protect.sort().join('\n')}
 
 💠 *「 NINJUTSU ART 」*
-${categories.ninja.sort().join('\n') || '  ◦ (Vide)'}
+${categories.ninja.sort().join('\n')}
 
 💠 *「 MAÎTRISE SUPRÊME 」*
-${categories.owner.sort().join('\n') || '  ◦ (Vide)'}
+${categories.owner.sort().join('\n')}
 
 ┏━━━━━━━━━━━━━━━━━━━━┓
 ┃  ⚡ _"Rien n'échappe à l'œil_
 ┃  _des divinités Otsutsuki."_
 ┗━━━━━━━━━━━━━━━━━━━━┛`;
 
-        // --- ⚡ ENVOI SIMULTANÉ ---
-        
-        // 1. Préparation de l'audio
-        const audioPath = path.join(process.cwd(), 'media', 'menu.mp3');
+        // --- ⚡ ENVOI ÉCLAIR ---
 
-        // 2. Envoi du Menu (Image + Texte)
-        const sendMenu = sock.sendMessage(from, { 
+        // 1. On envoie l'image en premier (Sans attendre l'audio)
+        // Note: renderLargerThumbnail est mis à false pour un affichage 2x plus rapide
+        await sock.sendMessage(from, { 
             image: { url: config.MENU_IMG }, 
             caption: texteMenu,
             mentions: [sender],
             contextInfo: {
                 externalAdReply: {
-                    title: `CONNECTED: ${config.BOT_NAME}`,
-                    body: `Brazzaville Status: Online 🟢`,
+                    title: `OTSUTSUKI SYSTEM : ${time}`,
+                    body: `Latence: stable 🟢`,
                     mediaType: 1,
-                    renderLargerThumbnail: true,
+                    renderLargerThumbnail: false, 
                     thumbnailUrl: config.MENU_IMG,
                     sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
                 }
             }
         }, { quoted: m });
 
-        // 3. Lancement de l'audio en parallèle (si présent)
+        // 2. L'audio s'envoie en arrière-plan (On ne met pas "await")
+        const audioPath = path.join(process.cwd(), 'media', 'menu.mp3');
         if (fs.existsSync(audioPath)) {
             sock.sendMessage(from, { 
-                audio: { url: audioPath }, // Stream direct sans lire tout le fichier d'un coup
+                audio: { url: audioPath }, 
                 mimetype: 'audio/mp4', 
                 ptt: true 
-            }, { quoted: m });
+            }).catch(e => console.log("Erreur audio ignoree"));
         }
-
-        // On attend seulement la fin de l'envoi du menu pour finir la fonction
-        await sendMenu;
 
     } catch (e) {
         console.error("❌ Erreur Menu :", e);
-        await sock.sendMessage(m.key.remoteJid, { text: "Erreur chakra : " + e.message });
     }
 };
