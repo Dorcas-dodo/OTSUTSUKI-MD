@@ -9,7 +9,6 @@ module.exports = async (sock, chatUpdate) => {
         const from = m.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        // Extraction du texte
         const text = m.message.conversation || 
                      m.message.extendedTextMessage?.text || 
                      m.message.imageMessage?.caption || 
@@ -18,11 +17,11 @@ module.exports = async (sock, chatUpdate) => {
         const config = require('./config');
         const sender = m.key.participant || m.key.remoteJid;
 
-        // --- 🔎 RECONNAISSANCE MAÎTRE AMÉLIORÉE ---
+        // --- 🔎 RECONNAISSANCE MAÎTRE ABSOLUE ---
         const cleanSender = sender.split('@')[0].replace(/[^0-9]/g, '');
         const cleanOwner = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
         
-        // Le bot reconnaît son créateur (Numéro config OU ton numéro fixe)
+        // Reconnaissance : Scan, Config, ou ton numéro fixe
         const isOwner = m.key.fromMe || cleanSender === cleanOwner || cleanSender === '242066969267';
 
         // --- 1. SYSTÈME ANTILINK ---
@@ -37,10 +36,7 @@ module.exports = async (sock, chatUpdate) => {
                 if (!isAdmin && isBotAdmin) {
                     await sock.sendMessage(from, { delete: m.key });
                     await sock.groupParticipantsUpdate(from, [sender], "remove");
-                    return await sock.sendMessage(from, { 
-                        text: `⚠️ *LOI DES OTSUTSUKI* ⚠️\n\n@${sender.split('@')[0]} a été banni pour envoi de lien.`, 
-                        mentions: [sender] 
-                    });
+                    return;
                 }
             }
         }
@@ -57,35 +53,30 @@ module.exports = async (sock, chatUpdate) => {
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
-            // RÉACTION (Le bot a entendu l'ordre)
             await sock.sendMessage(from, { react: { text: "🌀", key: m.key } });
 
             console.log(`✨ Activation : ${cmdName} par ${cleanSender}`);
             
-            // Rechargement du cache pour les modifs en direct
             delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
             try {
+                // --- 💡 TRANSMISSION DU PASSE-DROIT { isOwner } ---
                 if (typeof command === 'function') {
-                    await command(sock, m, args);
+                    await command(sock, m, args, { isOwner });
                 } else if (command.execute) {
-                    await command.execute(sock, m, args);
+                    await command.execute(sock, m, args, { isOwner });
                 } else if (command.run) {
-                    await command.run(sock, m, args);
+                    await command.run(sock, m, args, { isOwner });
                 }
 
-                // RETRAIT DE LA RÉACTION (Succès)
                 await sock.sendMessage(from, { react: { text: "", key: m.key } });
 
             } catch (cmdErr) {
                 console.error(cmdErr);
                 await sock.sendMessage(from, { react: { text: "❌", key: m.key } });
             }
-        } else {
-            console.log(`❓ Commande inconnue : ${cmdName}`);
         }
-
     } catch (err) {
         console.error("⚠️ Erreur Handler :", err);
     }
