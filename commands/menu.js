@@ -6,15 +6,21 @@ module.exports = async (sock, m, args) => {
         const from = m.key.remoteJid;
         const sender = m.key.participant || m.key.remoteJid;
         
-        // --- LOGIQUE DE CLASSEMENT OTSUTSUKI (MISE À JOUR) ---
+        // --- 🔎 LOGIQUE DE RECONNAISSANCE DU MAÎTRE ---
+        const cleanSender = sender.split('@')[0]; // Numéro de celui qui écrit
+        const cleanOwner = config.NUMERO_OWNER.replace(/[^0-9]/g, ''); // Ton numéro perso nettoyé
+        
+        // Le Maître est soit celui qui a scanné (fromMe), soit ton numéro perso (cleanOwner)
+        const isOwner = m.key.fromMe || cleanSender === cleanOwner;
+        
+        // --- 🏆 CLASSEMENT OTSUTSUKI ---
         const otsutsukiClan = [
-            { name: "Hagoromo", power: "Sage des Six Chemins" },
-            { name: "Indra", power: "Génie du Ninjutsu" },
-            { name: "Isshiki", power: "Souverain des Dimensions" },
-            { name: "Kaguya", power: "Mère Primordiale" }
+            { name: "Hagoromo", symbol: "☀️", power: "Sage des Six Chemins" },
+            { name: "Indra", symbol: "⚡", power: "Génie du Ninjutsu" },
+            { name: "Isshiki", symbol: "🔥", power: "Souverain des Dimensions" },
+            { name: "Kaguya", symbol: "🌀", power: "Mère Primordiale" }
         ];
 
-        // Protecteur du jour choisi parmi la lignée
         const dailyProtector = otsutsukiClan[Math.floor(Math.random() * otsutsukiClan.length)];
 
         const time = moment.tz('Africa/Brazzaville').format('HH:mm');
@@ -26,10 +32,10 @@ module.exports = async (sock, m, args) => {
    👁️‍🗨️  *ＯＴＳＵＴＳＵＫＩ - ＬＥＧＡＣＹ* 👁️‍🗨️
    
    *┏━━━━━━━━━━━━━━━━━━━━┓*
-     🏮 *HÔTE :* @${sender.split('@')[0]}
-     👑 *RANG :* Élite du Clan Supérieur
+     🏮 *HÔTE :* @${cleanSender}
+     👑 *RANG :* ${isOwner ? "🌙 Dieux Otsutsuki" : "🍃 Shinobi du Village"}
      ⏳ *ENDURANCE :* ${runtime}
-     🛡️ *GARDE :* ${dailyProtector.name}
+     🛡️ *GARDE :* ${dailyProtector.symbol} ${dailyProtector.name}
    *┗━━━━━━━━━━━━━━━━━━━━┛*
 
    *📜「 ROULEAUX DE TRANSMISSION 」*
@@ -39,9 +45,9 @@ module.exports = async (sock, m, args) => {
    
    *⚔️「 DROIT DE VIE OU DE MORT (ADMIN) 」*
    │ ◦ kick • _Exil Dimensionnel_
-   │ ◦ add • _Appel au Clan_
-   │ ◦ group • _Sceau de Zone_
-   │ ◦ tagall • _Éveil des Shinobis_
+   │ ◦ kickall • _Purge Totale_
+   │ ◦ promote • _Élever au Clan_
+   │ ◦ demote • _Destitution_
    
    *🛡️「 BARRIÈRE DES SIX CHEMINS 」*
    │ ◦ antilink • _Anti-Espionnage_
@@ -82,7 +88,7 @@ module.exports = async (sock, m, args) => {
             contextInfo: {
                 externalAdReply: {
                     title: "ＯＴＳＵＴＳＵＫＩ   ＰＲＯＪＥＣＴ",
-                    body: "Technique de Suprématie activée 🔴",
+                    body: isOwner ? "Maître reconnu ✅" : "Shinobi identifié 👤",
                     mediaType: 1,
                     renderLargerThumbnail: true, 
                     thumbnailUrl: config.MENU_IMG,
