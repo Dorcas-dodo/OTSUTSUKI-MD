@@ -1,27 +1,58 @@
-const isAdmin = require('../lib/isAdmin');
+const config = require('../config');
 
-module.exports = {
-    name: "kick",
-    async execute(sock, from, msg, args, config) {
-        if (!from.endsWith('@g.us')) return sock.sendMessage(from, { text: "❌ Cette commande est réservée aux groupes." });
+module.exports = async (sock, m, args) => {
+    try {
+        const from = m.key.remoteJid;
+        const sender = m.key.participant || m.key.remoteJid;
 
-        const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, from, msg.key.participant || msg.key.remoteJid);
-
-        if (!isBotAdmin) return sock.sendMessage(from, { text: "⚠️ Le bot doit être *admin* pour expulser quelqu'un." });
-        if (!isSenderAdmin) return sock.sendMessage(from, { text: "❌ Seuls les admins peuvent utiliser cette commande." });
-
-        let usersToKick = [];
-        if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
-            usersToKick = msg.message.extendedTextMessage.contextInfo.mentionedJid;
-        } else if (msg.message?.extendedTextMessage?.contextInfo?.participant) {
-            usersToKick = [msg.message.extendedTextMessage.contextInfo.participant];
+        // 1. Vérification groupe
+        if (!from.endsWith('@g.us')) {
+            return sock.sendMessage(from, { text: "🏮 Cette technique est interdite hors d'un groupe." });
         }
 
-        if (usersToKick.length === 0) return sock.sendMessage(from, { text: "⚠️ Mentionne la personne ou réponds à son message pour l'expulser." });
+        // 2. Récupération des données du groupe (Admin Check)
+        const groupMetadata = await sock.groupMetadata(from);
+        const participants = groupMetadata.participants;
+        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
 
+        const isBotAdmin = participants.find(p => p.id === botId)?.admin;
+        const isSenderAdmin = participants.find(p => p.id === sender)?.admin;
+        const isOwner = sender.includes(config.OWNER_NUMBER) || m.key.fromMe;
+
+        if (!isBotAdmin) return sock.sendMessage(from, { text: "⚠️ Le bot doit être *ADMIN* pour bannir." });
+        if (!isSenderAdmin && !isOwner) return sock.sendMessage(from, { text: "🚷 Seul un admin du clan peut utiliser cette commande." });
+
+        // 3. Identification de la cible (Tag, Reply ou Argument)
+        let usersToKick = [];
+        const mentioned = m.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+        const quoted = m.message?.extendedTextMessage?.contextInfo?.participant;
+
+        if (mentioned && mentioned.length > 0) {
+            usersToKick = mentioned;
+        } else if (quoted) {
+            usersToKick = [quoted];
+        } else if (args[0]) {
+            usersToKick = [args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net'];
+        }
+
+        if (usersToKick.length === 0) {
+            return sock.sendMessage(from, { text: "🏮 Tag un shinobi ou réponds à son message pour l'expulser." });
+        }
+
+        // 4. Exécution du Kick
         for (let user of usersToKick) {
+            // Empêcher de kick le bot lui-même ou l'owner
+            if (user === botId || user.includes(config.OWNER_NUMBER)) continue;
+
             await sock.groupParticipantsUpdate(from, [user], "remove");
         }
-        await sock.sendMessage(from, { text: "✅ Utilisateur(s) expulsé(s) par *OTSUTSUKI-MD*." });
+
+        await sock.sendMessage(from, { 
+            text: `🚷 *DÉPLOIEMENT TERMINÉ*\n\nLe(s) fautif(s) ont été bannis du clan par l'autorité *OTSUTSUKI-MD*.` 
+        }, { quoted: m });
+
+    } catch (e) {
+        console.error(e);
+        await sock.sendMessage(m.key.remoteJid, { text: "❌ Erreur lors de l'expulsion." });
     }
 };
