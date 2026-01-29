@@ -3,7 +3,7 @@ module.exports = {
     SESSION_ID: process.env.SESSION_ID || "", 
     PREFIXE: process.env.PREFIXE || ".",
     OWNER_NAME: process.env.NOM_OWNER || "Indra Otsutsuki",
-    OWNER_NUMBER: process.env.NUMERO_OWNER || "242068079834",
+    OWNER_NUMBER: process.env.NUMERO_OWNER || "242068079834, 242066969267",
 
     // ⚙️ Paramètres de fonctionnement
     MODE: process.env.MODE || "public", // 'public' ou 'self'
@@ -20,4 +20,5 @@ module.exports = {
     // Lien de secours (si le fichier local échoue)
     URL_RECURS: "https://files.catbox.moe/dyox3v.jpg" 
 };
+
 
