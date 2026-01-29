@@ -9,7 +9,6 @@ const {
 const pino = require("pino");
 const qrcodeTerminal = require('qrcode-terminal');
 const QRCode = require('qrcode');
-// RÉACTIVATION : Importation du fichier de gestion des messages
 const messageHandler = require('./messages.upsert');
 
 const app = express();
@@ -103,7 +102,7 @@ async function startBot() {
         }
         if (connection === 'open') {
             currentQR = null;
-            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ !");
+            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ AVEC SUCCÈS !");
         }
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
@@ -111,9 +110,73 @@ async function startBot() {
         }
     });
 
-    // RÉACTIVATION : Le bot va maintenant écouter les messages entrants
+    // ÉCOUTEUR DE MESSAGES
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         await messageHandler(sock, chatUpdate);
+    });
+
+    // --- GESTION BIENVENUE & AU REVOIR ---
+    sock.ev.on('group-participants.update', async (anu) => {
+        const { id, participants, action } = anu;
+        try {
+            const metadata = await sock.groupMetadata(id);
+            const config = require('./config');
+
+            for (let num of participants) {
+                let ppuser;
+                try {
+                    ppuser = await sock.profilePictureUrl(num, 'image');
+                } catch {
+                    ppuser = 'https://files.catbox.moe/otsutsuki.jpg'; 
+                }
+
+                // SI UN MEMBRE REJOINT
+                if (action === 'add' && config.WELCOME) {
+                    const welcomeMsg = `╔════════════════════╗\n   ⛩️  *BIENVENUE AU CLAN* ⛩️\n╚════════════════════╝\n\n🏮 *Shinobi :* @${num.split('@')[0]}\n🌀 *Clan :* ${metadata.subject}\n🌑 *Rang :* Nouvel Aspirant\n\n📜 *DESCRIPTION DU GROUPE*\n${metadata.desc || "Respectez le code des Otsutsuki."}\n\n🌊 _"Ton voyage vers la puissance commence ici."_\n   🏮 *OTSUTSUKI-MD SYSTEM* 🏮`;
+
+                    await sock.sendMessage(id, {
+                        image: { url: ppuser },
+                        caption: welcomeMsg,
+                        mentions: [num],
+                        contextInfo: {
+                            externalAdReply: {
+                                title: `WELCOME TO ${metadata.subject}`,
+                                body: "Nouveau membre détecté ✅",
+                                sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD",
+                                thumbnailUrl: ppuser,
+                                mediaType: 1,
+                                renderLargerThumbnail: true,
+                                showAdAttribution: true
+                            }
+                        }
+                    });
+                }
+                
+                // SI UN MEMBRE QUITTE
+                else if (action === 'remove' && config.WELCOME) {
+                    const goodbyeMsg = `╔════════════════════╗\n    ⛩️  *EXIL DU CLAN* ⛩️\n╚════════════════════╝\n\n🌑 *Shinobi :* @${num.split('@')[0]}\n🌀 *Clan :* ${metadata.subject}\n📜 *Status :* Déserteur (Nukenin)\n\n🌊 _"Ton voyage s'arrête ici. Que l'ombre guide tes pas."_\n\n🏮 *OTSUTSUKI-MD SYSTEM* 🏮`;
+
+                    await sock.sendMessage(id, {
+                        image: { url: ppuser },
+                        caption: goodbyeMsg,
+                        mentions: [num],
+                        contextInfo: {
+                            externalAdReply: {
+                                title: `ADIEU À ${num.split('@')[0]}`,
+                                body: "Un membre a quitté les rangs 🚪",
+                                sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD",
+                                thumbnailUrl: ppuser,
+                                mediaType: 1,
+                                renderLargerThumbnail: true,
+                                showAdAttribution: true
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.log("Erreur Group Update :", err);
+        }
     });
 }
 
