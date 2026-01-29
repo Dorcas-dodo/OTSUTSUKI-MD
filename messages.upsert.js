@@ -6,9 +6,6 @@ module.exports = async (sock, chatUpdate) => {
         const m = chatUpdate.messages[0];
         if (!m || !m.message) return;
 
-        // --- FIX : Autoriser le bot à répondre à son propre numéro ---
-        // if (m.key.fromMe) return; 
-
         const from = m.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
@@ -20,11 +17,18 @@ module.exports = async (sock, chatUpdate) => {
                      
         const config = require('./config');
         const sender = m.key.participant || m.key.remoteJid;
-        const isOwner = sender.includes(config.OWNER_NUMBER) || m.key.fromMe;
+
+        // --- 🔎 RECONNAISSANCE MAÎTRE AMÉLIORÉE ---
+        const cleanSender = sender.split('@')[0].replace(/[^0-9]/g, '');
+        const cleanOwner = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
+        
+        // Le bot reconnaît son créateur (Numéro config OU ton numéro fixe)
+        const isOwner = m.key.fromMe || cleanSender === cleanOwner || cleanSender === '242066969267';
 
         // --- 1. SYSTÈME ANTILINK ---
         if (isGroup && config.ANTILINK) {
-            if (text.includes("http://") || text.includes("https://") || text.includes("chat.whatsapp.com")) {
+            const linkPattern = /https?:\/\/\S+|chat\.whatsapp\.com\/\S+/i;
+            if (linkPattern.test(text)) {
                 const groupMetadata = await sock.groupMetadata(from);
                 const participants = groupMetadata.participants;
                 const isAdmin = participants.find(p => p.id === sender)?.admin;
@@ -53,15 +57,16 @@ module.exports = async (sock, chatUpdate) => {
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
-            // --- AJOUT DE LA RÉACTION (Début) ---
+            // RÉACTION (Le bot a entendu l'ordre)
             await sock.sendMessage(from, { react: { text: "🌀", key: m.key } });
 
-            console.log(`✨ Exécution de : ${cmdName}`);
+            console.log(`✨ Activation : ${cmdName} par ${cleanSender}`);
+            
+            // Rechargement du cache pour les modifs en direct
             delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
             try {
-                // Support de différents formats d'export de commande
                 if (typeof command === 'function') {
                     await command(sock, m, args);
                 } else if (command.execute) {
@@ -70,7 +75,7 @@ module.exports = async (sock, chatUpdate) => {
                     await command.run(sock, m, args);
                 }
 
-                // --- RETRAIT DE LA RÉACTION (Succès) ---
+                // RETRAIT DE LA RÉACTION (Succès)
                 await sock.sendMessage(from, { react: { text: "", key: m.key } });
 
             } catch (cmdErr) {
