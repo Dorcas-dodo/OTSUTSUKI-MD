@@ -1,20 +1,23 @@
 # On utilise une image Node.js stable
 FROM node:20
 
-# Dossier de travail dans le conteneur
+# Installation des outils nécessaires pour WhatsApp (images/vidéos)
+RUN apt-get update && apt-get install -y ffmpeg webp && apt-get clean
+
+# Dossier de travail
 WORKDIR /app
 
 # Copie des fichiers de configuration
 COPY package*.json ./
 
-# Installation des dépendances (Koyeb le fera proprement ici)
+# Installation propre
 RUN npm install
 
-# Copie de tout le reste du code (y compris le dossier web)
+# Copie de tout le reste
 COPY . .
 
-# Exposition du port (le port 8000 que tu as choisi)
+# Exposition du port
 EXPOSE 8000
 
-# Commande pour lancer ton bot
-CMD ["node", "web/server.js"]
+# CHANGEMENT ICI : On lance index.js qui gère à la fois le bot et le serveur web
+CMD ["node", "index.js"]
