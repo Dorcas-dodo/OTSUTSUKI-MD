@@ -1,103 +1,151 @@
 const config = require('../config');
+
 const moment = require('moment-timezone');
 
+
+
 module.exports = async (sock, m, args) => {
+
     try {
+
         const from = m.key.remoteJid;
+
+        // Détection de l'expéditeur : gère les groupes et le chat privé
+
         const sender = m.key.participant || m.key.remoteJid;
+
         
-        // --- 🔎 LOGIQUE DE RECONNAISSANCE DU MAÎTRE ---
-        const cleanSender = sender.split('@')[0]; // Numéro de celui qui écrit
-        const cleanOwner = config.NUMERO_OWNER.replace(/[^0-9]/g, ''); // Ton numéro perso nettoyé
+
+        // --- 🔎 LOGIQUE DE RECONNAISSANCE ABSOLUE ---
+
+        const cleanSender = sender.split('@')[0]; 
+
+        const cleanOwner = config.NUMERO_OWNER ? config.NUMERO_OWNER.replace(/[^0-9]/g, '') : '';
+
         
-        // Le Maître est soit celui qui a scanné (fromMe), soit ton numéro perso (cleanOwner)
-        const isOwner = m.key.fromMe || cleanSender === cleanOwner;
+
+        // On force la reconnaissance si c'est TOI (242066969267) ou le bot lui-même
+
+        const isOwner = m.key.fromMe || cleanSender === cleanOwner || cleanSender === '242066969267';
+
         
+
         // --- 🏆 CLASSEMENT OTSUTSUKI ---
+
         const otsutsukiClan = [
-            { name: "Hagoromo", symbol: "☀️", power: "Sage des Six Chemins" },
-            { name: "Indra", symbol: "⚡", power: "Génie du Ninjutsu" },
-            { name: "Isshiki", symbol: "🔥", power: "Souverain des Dimensions" },
-            { name: "Kaguya", symbol: "🌀", power: "Mère Primordiale" }
+
+            { name: "Hagoromo", symbol: "☀️" },
+
+            { name: "Indra", symbol: "⚡" },
+
+            { name: "Isshiki", symbol: "🔥" },
+
+            { name: "Kaguya", symbol: "🌀" }
+
         ];
 
         const dailyProtector = otsutsukiClan[Math.floor(Math.random() * otsutsukiClan.length)];
 
+
+
         const time = moment.tz('Africa/Brazzaville').format('HH:mm');
+
         const runtime = `${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`;
 
-        const texteMenu = `
-✨ *『 HIÉRARCHIE DE LA LIGNÉE DIVINE 』* ✨
 
-   👁️‍🗨️  *ＯＴＳＵＴＳＵＫＩ - ＬＥＧＡＣＹ* 👁️‍🗨️
+
+        const texteMenu = `✨ *『 RÉSIDENCE DES OTSUTSUKI 』* ✨
+
+
+
+   👁️‍🗨️ *ＯＴＳＵＴＳＵＫＩ - ＬＥＧＡＣＹ* 👁️‍🗨️
+
    
+
    *┏━━━━━━━━━━━━━━━━━━━━┓*
+
      🏮 *HÔTE :* @${cleanSender}
+
      👑 *RANG :* ${isOwner ? "🌙 Dieux Otsutsuki" : "🍃 Shinobi du Village"}
+
      ⏳ *ENDURANCE :* ${runtime}
+
      🛡️ *GARDE :* ${dailyProtector.symbol} ${dailyProtector.name}
+
    *┗━━━━━━━━━━━━━━━━━━━━┛*
 
-   *📜「 ROULEAUX DE TRANSMISSION 」*
-   │ ◦ ${config.PREFIXE}ping • _Vitesse Divine_
-   │ ◦ ${config.PREFIXE}infos • _Archives Interdites_
-   │ ◦ ${config.PREFIXE}speed • _Flux de Chakra_
+
+
+   *📜「 MISSIONS RANG A (ADMIN) 」*
+
+   │ ◦ ${config.PREFIXE}kick • _Exil_
+
+   │ ◦ ${config.PREFIXE}kickall • _Purge_
+
+   │ ◦ ${config.PREFIXE}mode • _Flux_
+
    
-   *⚔️「 DROIT DE VIE OU DE MORT (ADMIN) 」*
-   │ ◦ kick • _Exil Dimensionnel_
-   │ ◦ kickall • _Purge Totale_
-   │ ◦ promote • _Élever au Clan_
-   │ ◦ demote • _Destitution_
-   
-   *🛡️「 BARRIÈRE DES SIX CHEMINS 」*
-   │ ◦ antilink • _Anti-Espionnage_
-   │ ◦ ban • _Prison du Néant_
-   │ ◦ clear • _Purge du Monde_
-   │ ◦ warn • _Jugement Divin_
-   
+
    *🧬「 KEKKEI MŌRA (POUVOIRS) 」*
-   │ ◦ ai • _Sagesse de Hagoromo_
-   │ ◦ vv • _Rinne-Sharingan_
-   │ ◦ sticker • _Sceau de Karma_
-   │ ◦ edit • _Réécriture Réelle_
-   
-   *🪐「 CONSEIL DES OTSUTSUKI 」*
-   │ ◦ mode • _Loi du Monde_
-   │ ◦ setprefix • _Code d'Élite_
-   │ ◦ reboot • _Renaissance_
-   │ ◦ eval • _Volonté Divine_
 
-   *┏━━〔 🏆 CLASSEMENT DE PUISSANCE 〕━━┓*
-     1. ☀️ *HAGOROMO* (Le Fondateur)
-     2. ⚡ *INDRA* (L'Héritier de l'Art)
-     3. 🔥 *ISSHIKI* (La Force Pure)
-     4. 🌀 *KAGUYA* (L'Origine du Tout)
-   *┗━━━━━━━━━━━━━━━━━━━━┛*
+   │ ◦ ${config.PREFIXE}ai • _Sagesse_
+
+   │ ◦ ${config.PREFIXE}vv • _Vision_
+
+   │ ◦ ${config.PREFIXE}sticker • _Sceau_
+
+
 
    🕯️ _"La volonté du clan ne meurt jamais,_
+
    _elle se transmet par le Karma."_
 
-   📍 *Dimension Otsutsuki | ${time}*`;
 
-        // --- ENVOI HAUTE PERFORMANCE ---
-        
+
+   📍 *Brazzaville, CG | ${time}*`;
+
+
+
+        // --- ENVOI ULTRA-RAPIDE ---
+
         await sock.sendMessage(from, { 
-            image: { url: config.MENU_IMG }, 
+
+            image: { url: config.MENU_IMG || 'https://telegra.ph/file/0c9269550e68d011f0165.jpg' }, 
+
             caption: texteMenu,
+
             mentions: [sender],
+
             contextInfo: {
+
                 externalAdReply: {
-                    title: "ＯＴＳＵＴＳＵＫＩ   ＰＲＯＪＥＣＴ",
+
+                    title: "ＯＴＳＵＴＳＵＫＩ ＳＹＳＴＥＭ",
+
                     body: isOwner ? "Maître reconnu ✅" : "Shinobi identifié 👤",
+
                     mediaType: 1,
-                    renderLargerThumbnail: true, 
-                    thumbnailUrl: config.MENU_IMG,
-                    sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
+
+                    renderLargerThumbnail: false, // FALSE pour éviter le lag
+
+                    thumbnailUrl: config.MENU_IMG
+
                 }
+
             }
+
         }, { quoted: m });
 
+
+
     } catch (e) {
-        console.error("Erreur Otsutsuki Menu :", e);
+
+        console.error("Erreur Menu :", e);
+
+        // Secours texte si l'image crash
+
+        sock.sendMessage(m.key.remoteJid, { text: "❌ Erreur critique dans les archives." });
+
     }
+
 };
