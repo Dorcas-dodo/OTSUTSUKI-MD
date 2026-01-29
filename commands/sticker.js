@@ -1,47 +1,43 @@
-const { Sticker, StickerTypes } = require('wa-sticker-formatter');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { ffmpeg } = require('fluent-ffmpeg'); // Assure-toi d'avoir ffmpeg installé sur Koyeb
+const stream = require('stream');
 
 module.exports = async (sock, m, args) => {
-    const from = m.key.remoteJid;
-    const config = require('../config');
-
-    // On vérifie si c'est une image ou une vidéo qui est envoyée ou citée (reply)
-    const quoted = m.message.extendedTextMessage?.contextInfo?.quotedMessage;
-    const mime = (m.message.imageMessage || m.message.videoMessage) 
-                 ? (m.message.imageMessage?.mimetype || m.message.videoMessage?.mimetype) 
-                 : (quoted?.imageMessage?.mimetype || quoted?.videoMessage?.mimetype);
-
-    if (!mime) return sock.sendMessage(from, { text: "🏮 Envoie une image/vidéo ou réponds à une image avec *.sticker*" });
-
     try {
-        // Téléchargement du média
-        const messageToDownload = quoted ? quoted : m.message;
-        const stream = await require('@whiskeysockets/baileys').downloadContentFromMessage(
-            messageToDownload.imageMessage || messageToDownload.videoMessage,
-            mime.split('/')[0]
-        );
+        const from = m.key.remoteJid;
+        const quoted = m.message?.extendedTextMessage?.contextInfo?.quotedMessage || m.message;
+        const mime = (quoted.imageMessage || quoted.videoMessage || quoted.viewOnceMessageV2?.message?.imageMessage)?.mimetype || '';
 
+        if (!/image|video/.test(mime)) return sock.sendMessage(from, { text: "🏮 Répondez à une image ou une vidéo courte." });
+
+        // 1. Détection du type
+        const isVideo = mime.includes('video');
+        const messageType = isVideo ? 'video' : 'image';
+        const content = quoted.viewOnceMessageV2?.message?.[isVideo ? 'videoMessage' : 'imageMessage'] || quoted[isVideo ? 'videoMessage' : 'imageMessage'];
+
+        // 2. Téléchargement rapide en mémoire
+        const download = await downloadContentFromMessage(content, messageType);
         let buffer = Buffer.from([]);
-        for await (const chunk of stream) {
+        for await (const chunk of download) {
             buffer = Buffer.concat([buffer, chunk]);
         }
 
-        // Création du sticker
-        const sticker = new Sticker(buffer, {
-            pack: config.BOT_NAME || 'Otsutsuki-MD', // Nom du pack
-            author: config.OWNER_NAME || 'Clan Otsutsuki', // Nom de l'auteur
-            type: StickerTypes.FULL, // Format complet (non rogné)
-            categories: ['🤩', '🌀'], // Catégories
-            id: '12345',
-            quality: 70, // Qualité du sticker
-        });
+        // 3. Envoi direct comme Sticker
+        // Baileys gère la conversion automatique si ffmpeg est présent
+        await sock.sendMessage(from, { 
+            sticker: buffer,
+            contextInfo: {
+                externalAdReply: {
+                    title: "ＯＴＳＵＴＳＵＫＩ ＳＴＩＣＫＥＲ",
+                    body: "Conversion réussie ✅",
+                    mediaType: 1,
+                    thumbnailUrl: config.MENU_IMG
+                }
+            }
+        }, { quoted: m });
 
-        const stickerBuffer = await sticker.toBuffer();
-        
-        // Envoi du sticker
-        await sock.sendMessage(from, { sticker: stickerBuffer }, { quoted: m });
-
-    } catch (err) {
-        console.error("Erreur Sticker :", err);
-        await sock.sendMessage(from, { text: "❌ Échec de la création du sticker. Assure-toi que l'image n'est pas trop lourde." });
+    } catch (e) {
+        console.error(e);
+        await sock.sendMessage(m.key.remoteJid, { text: "❌ Erreur lors de la création du sceau." });
     }
 };
