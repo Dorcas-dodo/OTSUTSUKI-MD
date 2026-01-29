@@ -6,71 +6,74 @@ module.exports = async (sock, m, args) => {
         const from = m.key.remoteJid;
         const sender = m.key.participant || m.key.remoteJid;
         
-        // --- CALCUL DU RANG NINJA ---
-        const hour = moment.tz('Africa/Brazzaville').hour();
-        const isOwner = sender.includes(config.OWNER_NUMBER);
-        let ninjaRank = isOwner ? "🌙 Dieux Otsutsuki" : "🍃 Shinobi du Village";
-        
-        // --- SALUTATION SHINOBI ---
-        let greeting = "Repos nocturne";
-        if (hour >= 5 && hour < 12) greeting = "Entraînement matinal";
-        else if (hour >= 12 && hour < 18) greeting = "Mission de jour";
-        else if (hour >= 18 && hour < 23) greeting = "Garde de nuit";
+        // --- LOGIQUE DE CLASSEMENT OTSUTSUKI (MISE À JOUR) ---
+        const otsutsukiClan = [
+            { name: "Hagoromo", power: "Sage des Six Chemins" },
+            { name: "Indra", power: "Génie du Ninjutsu" },
+            { name: "Isshiki", power: "Souverain des Dimensions" },
+            { name: "Kaguya", power: "Mère Primordiale" }
+        ];
+
+        // Protecteur du jour choisi parmi la lignée
+        const dailyProtector = otsutsukiClan[Math.floor(Math.random() * otsutsukiClan.length)];
 
         const time = moment.tz('Africa/Brazzaville').format('HH:mm');
-        const uptime = process.uptime();
-        const runtime = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`;
+        const runtime = `${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`;
 
         const texteMenu = `
-✨ *『 PAIX SUR LE MONDE SHINOBI 』* ✨
+✨ *『 HIÉRARCHIE DE LA LIGNÉE DIVINE 』* ✨
 
    👁️‍🗨️  *ＯＴＳＵＴＳＵＫＩ - ＬＥＧＡＣＹ* 👁️‍🗨️
    
    *┏━━━━━━━━━━━━━━━━━━━━┓*
      🏮 *HÔTE :* @${sender.split('@')[0]}
-     📜 *RANG :* ${ninjaRank}
-     ⌛ *CHAKRA :* ${runtime} restant
-     🌀 *FLUX :* ${greeting}
+     👑 *RANG :* Élite du Clan Supérieur
+     ⏳ *ENDURANCE :* ${runtime}
+     🛡️ *GARDE :* ${dailyProtector.name}
    *┗━━━━━━━━━━━━━━━━━━━━┛*
 
-   *📜「 ROULEAUX DE BASE 」*
-   │ ◦ ${config.PREFIXE}ping • _Vitesse_
-   │ ◦ ${config.PREFIXE}infos • _Archives_
-   │ ◦ ${config.PREFIXE}runtime • _Endurance_
+   *📜「 ROULEAUX DE TRANSMISSION 」*
+   │ ◦ ${config.PREFIXE}ping • _Vitesse Divine_
+   │ ◦ ${config.PREFIXE}infos • _Archives Interdites_
+   │ ◦ ${config.PREFIXE}speed • _Flux de Chakra_
    
-   *⚔️「 MISSIONS DE RANG A (ADMIN) 」*
-   │ ◦ kick • _Exil du clan_
-   │ ◦ add • _Recrutement_
-   │ ◦ group • _Sceau du groupe_
-   │ ◦ tagall • _Rassemblement_
+   *⚔️「 DROIT DE VIE OU DE MORT (ADMIN) 」*
+   │ ◦ kick • _Exil Dimensionnel_
+   │ ◦ add • _Appel au Clan_
+   │ ◦ group • _Sceau de Zone_
+   │ ◦ tagall • _Éveil des Shinobis_
    
-   *🛡️「 BARRIÈRE DE PROTECTION 」*
-   │ ◦ antilink • _Contre-espionnage_
-   │ ◦ ban • _Prison dimensionnelle_
-   │ ◦ clear • _Purge de zone_
-   │ ◦ warn • _Avertissement_
+   *🛡️「 BARRIÈRE DES SIX CHEMINS 」*
+   │ ◦ antilink • _Anti-Espionnage_
+   │ ◦ ban • _Prison du Néant_
+   │ ◦ clear • _Purge du Monde_
+   │ ◦ warn • _Jugement Divin_
    
-   *🧬「 KEKKEI GENKAI (ART) 」*
-   │ ◦ ai • _Sagesse éternelle_
-   │ ◦ vv • _Vision nocturne_
-   │ ◦ sticker • _Parchemin scellé_
-   │ ◦ edit • _Métamorphose_
+   *🧬「 KEKKEI MŌRA (POUVOIRS) 」*
+   │ ◦ ai • _Sagesse de Hagoromo_
+   │ ◦ vv • _Rinne-Sharingan_
+   │ ◦ sticker • _Sceau de Karma_
+   │ ◦ edit • _Réécriture Réelle_
    
-   *🪐「 POUVOIR DES SIX CHEMINS 」*
-   │ ◦ mode • _État du monde_
-   │ ◦ setprefix • _Code secret_
+   *🪐「 CONSEIL DES OTSUTSUKI 」*
+   │ ◦ mode • _Loi du Monde_
+   │ ◦ setprefix • _Code d'Élite_
    │ ◦ reboot • _Renaissance_
-   │ ◦ eval • _Création divine_
+   │ ◦ eval • _Volonté Divine_
 
-   *┏━━━━━━━━━━━━━━━━━━━━┓*
-      🕯️ _"Celui qui ne comprend pas_
-      _la douleur ne peut pas_
-      _connaître la vraie paix."_
+   *┏━━〔 🏆 CLASSEMENT DE PUISSANCE 〕━━┓*
+     1. ☀️ *HAGOROMO* (Le Fondateur)
+     2. ⚡ *INDRA* (L'Héritier de l'Art)
+     3. 🔥 *ISSHIKI* (La Force Pure)
+     4. 🌀 *KAGUYA* (L'Origine du Tout)
    *┗━━━━━━━━━━━━━━━━━━━━┛*
 
-   📍 *Village de Brazzaville | ${time}*`;
+   🕯️ _"La volonté du clan ne meurt jamais,_
+   _elle se transmet par le Karma."_
 
-        // --- ENVOI DE LA MISSION ---
+   📍 *Dimension Otsutsuki | ${time}*`;
+
+        // --- ENVOI HAUTE PERFORMANCE ---
         
         await sock.sendMessage(from, { 
             image: { url: config.MENU_IMG }, 
@@ -78,8 +81,8 @@ module.exports = async (sock, m, args) => {
             mentions: [sender],
             contextInfo: {
                 externalAdReply: {
-                    title: "O T S U T S U K I   P R O J E C T",
-                    body: "Technique de l'Œil Divin activée",
+                    title: "ＯＴＳＵＴＳＵＫＩ   ＰＲＯＪＥＣＴ",
+                    body: "Technique de Suprématie activée 🔴",
                     mediaType: 1,
                     renderLargerThumbnail: true, 
                     thumbnailUrl: config.MENU_IMG,
@@ -88,14 +91,7 @@ module.exports = async (sock, m, args) => {
             }
         }, { quoted: m });
 
-        // L'audio s'exécute en fond pour l'immersion
-        sock.sendMessage(from, { 
-            audio: { url: './media/menu.mp3' }, 
-            mimetype: 'audio/mp4', 
-            ptt: true 
-        }).catch(() => {});
-
     } catch (e) {
-        console.error("Erreur Shinobi Menu :", e);
+        console.error("Erreur Otsutsuki Menu :", e);
     }
 };
