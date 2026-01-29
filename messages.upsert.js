@@ -10,49 +10,43 @@ module.exports = async (sock, chatUpdate) => {
         const from = m.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        // Extraction du texte
+        // Extraction du texte (Conversation, Image, Vidéo, etc.)
         const text = m.message.conversation || 
                      m.message.extendedTextMessage?.text || 
                      m.message.imageMessage?.caption || 
                      m.message.videoMessage?.caption || "";
                      
         const config = require('./config');
+        const sender = m.key.participant || m.key.remoteJid;
+        const isOwner = sender.includes(config.OWNER_NUMBER);
 
-        // --- SYSTÈME ANTILINK (VÉRIFICATION AVANT TOUT) ---
+        // --- 1. SYSTÈME ANTILINK ---
         if (isGroup && config.ANTILINK) {
             const groupMetadata = await sock.groupMetadata(from);
             const participants = groupMetadata.participants;
-            
-            // Vérifier si l'envoyeur est admin
             const isAdmin = participants.find(p => p.id === m.key.participant)?.admin;
-            // Vérifier si le bot est admin
             const isBotAdmin = participants.find(p => p.id === (sock.user.id.split(':')[0] + '@s.whatsapp.net'))?.admin;
 
-            // Détection de lien
             if (text.includes("http://") || text.includes("https://") || text.includes("chat.whatsapp.com")) {
                 if (!isAdmin) {
                     if (isBotAdmin) {
-                        console.log(`🚫 Lien détecté - Suppression et ban de : ${m.key.participant}`);
-                        
-                        // 1. Supprimer le message
+                        console.log(`🚫 Antilink : Suppression et ban de ${sender}`);
                         await sock.sendMessage(from, { delete: m.key });
-                        
-                        // 2. Expulser le membre
                         await sock.groupParticipantsUpdate(from, [m.key.participant], "remove");
-                        
-                        // 3. Informer le groupe
                         return await sock.sendMessage(from, { 
                             text: `⚠️ *LOI DES OTSUTSUKI* ⚠️\n\n@${m.key.participant.split('@')[0]} a été banni pour avoir envoyé un lien non autorisé.`, 
                             mentions: [m.key.participant] 
                         });
-                    } else {
-                        console.log("⚠️ Antilink : Le bot doit être admin pour bannir.");
                     }
                 }
             }
         }
 
-        // --- TRAITEMENT DES COMMANDES ---
+        // --- 2. VÉRIFICATION DU MODE (PUBLIC/SELF) ---
+        // Si le mode est "self" et que ce n'est pas le proprio, on s'arrête ici
+        if (config.MODE === 'self' && !isOwner) return;
+
+        // --- 3. TRAITEMENT DES COMMANDES ---
         const prefix = ".";
         if (!text.startsWith(prefix)) return;
 
@@ -63,6 +57,8 @@ module.exports = async (sock, chatUpdate) => {
 
         if (fs.existsSync(commandPath)) {
             console.log(`✨ Exécution de : ${cmdName}`);
+            
+            // Nettoyage du cache pour charger les modifs en temps réel
             delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
