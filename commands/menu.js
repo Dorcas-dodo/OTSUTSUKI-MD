@@ -48,7 +48,7 @@ module.exports = async (sock, m, args) => {
             }
         });
 
-        // --- ⛩️ DESIGN DU TEXTE (POLICE MODERNE) ---
+        // --- ⛩️ DESIGN DU TEXTE ---
         const texteMenu = `
 ┏━━〔 *OTSUTSUKI-MD* 〕━━┓
 ┃ 👤 *SHINOBI :* @${user}
@@ -85,7 +85,7 @@ ${categories.owner.sort().join('\n') || '  ◦ (Vide)'}
 ┃  _des divinités Otsutsuki."_
 ┗━━━━━━━━━━━━━━━━━━━━┛`;
 
-        // --- 🖼️ CONFIGURATION DU MESSAGE AVEC VIGNETTE ---
+        // --- 1. ENVOI DE L'IMAGE AVEC VIGNETTE ---
         const contextInfo = {
             externalAdReply: {
                 title: `CONNECTED: ${config.BOT_NAME}`,
@@ -104,6 +104,19 @@ ${categories.owner.sort().join('\n') || '  ◦ (Vide)'}
             mentions: [sender],
             contextInfo
         }, { quoted: m });
+
+        // --- 2. ENVOI DE L'AUDIO (SYCHRONISÉ) ---
+        const audioPath = path.join(process.cwd(), 'media', 'menu.mp3');
+
+        if (fs.existsSync(audioPath)) {
+            await sock.sendMessage(from, { 
+                audio: fs.readFileSync(audioPath), 
+                mimetype: 'audio/mp4', 
+                ptt: true // true pour envoyer comme note vocale
+            }, { quoted: m });
+        } else {
+            console.log("⚠️ Fichier menu.mp3 absent du dossier media");
+        }
 
     } catch (e) {
         console.error("❌ Erreur Menu :", e);
