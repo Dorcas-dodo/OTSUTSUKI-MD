@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
+const moment = require('moment-timezone');
 
 module.exports = async (sock, m, args) => {
     try {
@@ -9,113 +10,103 @@ module.exports = async (sock, m, args) => {
         const prefix = config.PREFIXE;
         const user = sender.split('@')[0];
         
-        // --- ⏳ CALCUL DE L'UPTIME ---
+        // --- 📊 INFOS TEMPS RÉEL ---
+        const date = moment.tz('Africa/Brazzaville').format('DD/MM/YYYY');
+        const time = moment.tz('Africa/Brazzaville').format('HH:mm:ss');
+        
         const uptime = process.uptime();
         const hours = Math.floor(uptime / 3600);
         const minutes = Math.floor((uptime % 3600) / 60);
-        const seconds = Math.floor(uptime % 60);
-        const uptimeString = `${hours}h ${minutes}m ${seconds}s`;
+        const uptimeString = `${hours}h ${minutes}m`;
 
-        // --- 📂 CLASSEMENT DYNAMIQUE DES COMMANDES ---
+        // --- 📂 LOGIQUE DE TRIAGE ---
         const commandsDir = path.join(process.cwd(), 'commands');
         const files = fs.readdirSync(commandsDir).filter(file => file.endsWith('.js'));
         
         const categories = {
-            général: [],
-            clan_groupe: [],
-            protection: [],
-            outils: [],
-            maitrise: []
+            general: [],
+            admin: [],
+            protect: [],
+            ninja: [],
+            owner: []
         };
 
         files.forEach(file => {
             const cmd = file.replace('.js', '');
-            const name = `│ 🏮 ${prefix}${cmd}`;
+            const styleCmd = `  ◦ ${cmd.toUpperCase()}`;
 
-            // Logique de triage par mots-clés
-            if (['ping', 'infos', 'runtime', 'help', 'menu', 'test'].includes(cmd)) {
-                categories.général.push(name);
-            } else if (['add', 'kick', 'promote', 'demote', 'tagall', 'group', 'tag', 'kickall', 'hidetag'].includes(cmd)) {
-                categories.clan_groupe.push(name);
-            } else if (cmd.startsWith('anti') || ['ban', 'clear', 'antilink'].includes(cmd)) {
-                categories.protection.push(name);
-            } else if (['sticker', 'ai', 'vv', 'attp', 'tgs', 'welcome', 'goodbye'].includes(cmd)) {
-                categories.outils.push(name);
+            if (['ping', 'infos', 'runtime', 'menu', 'test', 'speed'].includes(cmd)) {
+                categories.general.push(styleCmd);
+            } else if (['add', 'kick', 'promote', 'demote', 'tagall', 'hidetag', 'group'].includes(cmd)) {
+                categories.admin.push(styleCmd);
+            } else if (cmd.startsWith('anti') || ['ban', 'clear', 'warn'].includes(cmd)) {
+                categories.protect.push(styleCmd);
+            } else if (['sticker', 'ai', 'vv', 'attp', 'edit', 'cls'].includes(cmd)) {
+                categories.ninja.push(styleCmd);
             } else {
-                categories.maitrise.push(name); // Tout le reste (mode, reboot, owner...)
+                categories.owner.push(styleCmd);
             }
         });
 
+        // --- ⛩️ DESIGN DU TEXTE (POLICE MODERNE) ---
         const texteMenu = `
-⛩️ *｢ OTSUTSUKI-MD ｣* ⛩️
+┏━━〔 *OTSUTSUKI-MD* 〕━━┓
+┃ 👤 *SHINOBI :* @${user}
+┃ 🧬 *CLAN :* ${config.OWNER_NAME}
+┃ 🏮 *PREFIX :* ${prefix}
+┃ ⏱️ *UPTIME :* ${uptimeString}
+┃ 📡 *MODE :* ${config.MODE}
+┗━━━━━━━━━━━━━━━━━━━━┛
+
 ╔════════════════════╗
-┃  🏮 *PROFIL SHINOBI*
-┃  👤 *User:* @${user}
-┃  🎐 *Prefix:* [ ${prefix} ]
-┃  🌀 *Clan:* Otsutsuki Legacy
-┃  ⚙️ *Mode:* ${config.MODE.toUpperCase()}
-┃  ⏳ *Uptime:* ${uptimeString}
-┃  📍 *Loc:* Brazzaville, CG
+    *DASHBOARD COMMANDS*
 ╚════════════════════╝
+ 📅 *DATE :* ${date}
+ ⏳ *HEURE :* ${time}
+ 🚀 *COMMANDES :* ${files.length}
 
-┌───  🌑 *GÉNÉRAL* ────
-${categories.général.sort().join('\n') || '│ 🏮 (Aucune)'}
-└───────────────────
+💠 *「 GÉNÉRAL 」*
+${categories.general.sort().join('\n') || '  ◦ (Vide)'}
 
-┌───  🌀 *CLAN & GROUPE* ───
-${categories.clan_groupe.sort().join('\n') || '│ 🏮 (Aucune)'}
-└───────────────────
+💠 *「 ADMIN & CLAN 」*
+${categories.admin.sort().join('\n') || '  ◦ (Vide)'}
 
-┌───  🛡️ *PROTECTION* ────
-${categories.protection.sort().join('\n') || '│ 🏮 (Aucune)'}
-└───────────────────
+💠 *「 PROTECTION 」*
+${categories.protect.sort().join('\n') || '  ◦ (Vide)'}
 
-┌───  🛠️ *OUTILS & NINJUTSU* ──
-${categories.outils.sort().join('\n') || '│ 🏮 (Aucune)'}
-└───────────────────
+💠 *「 NINJUTSU ART 」*
+${categories.ninja.sort().join('\n') || '  ◦ (Vide)'}
 
-┌───  ⚡ *MAÎTRISE (OWNER)* ──
-${categories.maitrise.sort().join('\n') || '│ 🏮 (Aucune)'}
-└───────────────────
+💠 *「 MAÎTRISE SUPRÊME 」*
+${categories.owner.sort().join('\n') || '  ◦ (Vide)'}
 
-🌊 _"Le pouvoir des dieux entre vos mains."_
-    🏮 *CLAN OTSUTSUKI* 🏮`;
+┏━━━━━━━━━━━━━━━━━━━━┓
+┃  ⚡ _"Rien n'échappe à l'œil_
+┃  _des divinités Otsutsuki."_
+┗━━━━━━━━━━━━━━━━━━━━┛`;
 
-        // Chemins médias (Utilise l'URL du config si les fichiers locaux n'existent pas)
-        const mediaDir = path.join(process.cwd(), 'media');
-        const imagePath = path.join(mediaDir, 'menu.jpg');
-        
+        // --- 🖼️ CONFIGURATION DU MESSAGE AVEC VIGNETTE ---
         const contextInfo = {
             externalAdReply: {
-                title: "O T S U T S U K I  S Y S T E M",
-                body: `Shinobi ID: ${user}`,
+                title: `CONNECTED: ${config.BOT_NAME}`,
+                body: `Brazzaville Status: Online 🟢`,
                 mediaType: 1,
                 renderLargerThumbnail: true,
-                showAdAttribution: true,
+                showAdAttribution: false,
                 sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD",
                 thumbnailUrl: config.MENU_IMG
             }
         };
 
-        // Envoi avec Image locale ou URL distante
-        if (fs.existsSync(imagePath)) {
-            await sock.sendMessage(from, { 
-                image: fs.readFileSync(imagePath), 
-                caption: texteMenu,
-                mentions: [sender],
-                contextInfo
-            }, { quoted: m });
-        } else {
-            await sock.sendMessage(from, { 
-                image: { url: config.MENU_IMG }, 
-                caption: texteMenu,
-                mentions: [sender],
-                contextInfo
-            }, { quoted: m });
-        }
+        await sock.sendMessage(from, { 
+            image: { url: config.MENU_IMG }, 
+            caption: texteMenu,
+            mentions: [sender],
+            contextInfo
+        }, { quoted: m });
 
     } catch (e) {
         console.error("❌ Erreur Menu :", e);
-        await sock.sendMessage(m.key.remoteJid, { text: "Erreur lors de la génération du menu." });
+        await sock.sendMessage(m.key.remoteJid, { text: "Le chakra est instable. Erreur Menu." });
     }
 };
