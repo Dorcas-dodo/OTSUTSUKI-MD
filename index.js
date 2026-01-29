@@ -12,7 +12,8 @@ const QRCode = require('qrcode');
 const messageHandler = require('./messages.upsert');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Changement ici : Priorité au port fourni par l'hébergeur, sinon 8000
+const PORT = process.env.PORT || 8000; 
 let currentQR = null;
 let sock;
 
@@ -109,7 +110,7 @@ async function startBot() {
     sock.ev.on('messages.upsert', async (chatUpdate) => {
         await messageHandler(sock, chatUpdate);
     });
-} // <--- CETTE ACCOLADE MANQUAIT ICI POUR FERMER startBot()
+}
 
 // --- API ---
 app.get('/get-qr', (req, res) => res.json({ qr: currentQR }));
@@ -125,7 +126,8 @@ app.get('/pair', async (req, res) => {
     }
 });
 
+// Écoute sur le port 8000
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`✅ Serveur prêt : port ${PORT}`);
+    console.log(`✅ Serveur prêt sur le port ${PORT}`);
     startBot();
 });
