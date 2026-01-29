@@ -5,82 +5,85 @@ module.exports = async (sock, m, args) => {
         const from = m.key.remoteJid;
         const sender = m.key.participant || m.key.remoteJid;
         
-        // --- 🔎 RECONNAISSANCE MAÎTRE ---
-        const cleanSender = sender.split('@')[0]; 
+        // --- 🔎 IDENTIFICATION ---
+        const cleanSender = sender.split('@')[0];
         const cleanOwner = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
         const isOwner = m.key.fromMe || cleanSender === cleanOwner || cleanSender === '242066969267';
 
-        // --- 🏆 CLASSEMENT OTSUTSUKI ---
-        const otsutsukiClan = [
-            { name: "Hagoromo", symbol: "☀️" },
-            { name: "Indra", symbol: "⚡" },
-            { name: "Isshiki", symbol: "🔥" },
-            { name: "Kaguya", symbol: "🌀" },
-            { name: "Momoshiki", symbol: "💎" }
-        ];
-        const dailyProtector = otsutsukiClan[Math.floor(Math.random() * otsutsukiClan.length)];
-
-        // --- ⏱️ CALCUL TEMPS ET UPTIME (SANS MOMENT) ---
+        // --- ⏱️ DATA & UPTIME (LOGIQUE NATIVE SANS MOMENT) ---
         const date = new Date();
-        const time = date.toLocaleTimeString('fr-FR', { timeZone: 'Africa/Brazzaville', hour: '2-digit', minute: '2-digit' });
+        const options = { timeZone: 'Africa/Brazzaville', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        const time = date.toLocaleTimeString('fr-FR', options);
+        
         const uptimeSeconds = process.uptime();
         const hours = Math.floor(uptimeSeconds / 3600);
         const minutes = Math.floor((uptimeSeconds % 3600) / 60);
         const runtime = `${hours}h ${minutes}m`;
+        
+        const p = config.PREFIXE || '.';
 
-        const texteMenu = `✨ *『 RÉSIDENCE DES OTSUTSUKI 』* ✨
+        // --- 🎨 DESIGN DARK MODE ---
+        const header = `╔═══ 🌕 *ＯＴＳＵＴＳＵＫＩ* 🌕 ═══╗`;
+        const footer = `╚═══════════════════════╝`;
 
-   👁️‍🗨️ *ＯＴＳＵＴＳＵＫＩ - ＬＥＧＡＣＹ* 👁️‍🗨️
-   
-   *┏━━━━━━━━━━━━━━━━━━━━┓*
-     🏮 *HÔTE :* @${cleanSender}
-     👑 *RANG :* ${isOwner ? "🌙 Dieux Otsutsuki" : "🍃 Shinobi du Village"}
-     ⏳ *ENDURANCE :* ${runtime}
-     🛡️ *GARDE :* ${dailyProtector.symbol} ${dailyProtector.name}
-   *┗━━━━━━━━━━━━━━━━━━━━┛*
+        const texteMenu = `${header}
+║ 
+║ 👤 *HÔTE* : @${cleanSender}
+║ 👑 *RANG* : ${isOwner ? 'ᴅɪᴇᴜ ᴏᴛsᴜᴛsᴜᴋɪ' : 'sʜɪɴᴏʙɪ'}
+║ ⏳ *ᴜᴘᴛɪᴍᴇ* : ${runtime}
+║ 🏮 *ᴘʀᴇғɪxᴇ* : [ ${p} ]
+║ 📍 *ʟɪᴇᴜ* : ʙʀᴀᴢᴢᴀᴠɪʟʟᴇ
+║
+╠═══『 🛠️ *ɢᴇsᴛɪᴏɴ* 』═══
+║ ◦ ${p}ᴍᴏᴅᴇ [ᴘᴜʙʟɪᴄ/sᴇʟғ]
+║ ◦ ${p}ᴀɴᴛɪʟɪɴᴋ [ᴏɴ/ᴏғғ]
+║ ◦ ${p}ᴡᴇʟᴄᴏᴍᴇ / ${p}ɢᴏᴏᴅʙʏᴇ
+║ ◦ ${p}ᴘɪɴɢ / ${p}ʀᴏᴜᴛɪᴍᴇ
+║
+╠═══『 ⚔️ *ᴀᴅᴍɪɴɪsᴛʀᴀᴛɪᴏɴ* 』═══
+║ ◦ ${p}ᴋɪᴄᴋ / ${p}ᴋɪᴄᴋᴀʟʟ
+║ ◦ ${p}ʙᴀɴ / ${p}ᴘʀᴏᴍᴏᴛᴇ
+║ ◦ ${p}ᴛᴀɢᴀʟʟ / ${p}ʜɪᴅᴇᴛᴀɢ
+║ ◦ ${p}ɢʀᴏᴜᴘ [ᴏᴘᴇɴ/ᴄʟᴏsᴇ]
+║ ◦ ${p}ᴄʟᴇᴀʀ / ${p}ᴀᴅᴅ
+║
+╠═══『 🧬 *ᴋᴇᴋᴋᴇɪ ᴍᴏʀᴀ* 』═══
+║ ◦ ${p}ᴀɪ [ǫᴜᴇsᴛɪᴏɴ]
+║ ◦ ${p}ᴠᴠ [ᴠɪᴇᴡ-ᴏɴᴄᴇ]
+║ ◦ ${p}sᴛɪᴄᴋᴇʀ / ${p}ᴀᴛᴛᴘ
+║ ◦ ${p}ᴛɢs / ${p}ᴀɴᴛɪᴅᴇʟᴇᴛᴇ
+║
+╠═══『 📜 *ᴀʀᴄʜɪᴠᴇs* 』═══
+║ ◦ ${p}ɪɴғᴏs / ${p}ɢɪɴғᴏ
+║ ◦ ${p}ᴏᴡɴᴇʀ / ${p}ʜᴇʟᴘ
+║
+║  🌙 _"Le monde doit connaître_
+║      _la paix des Otsutsuki."_
+║
+${footer}
+*© 2026 ᴏᴛsᴜᴛsᴜᴋɪ ʟᴇɢᴀᴄʏ*`;
 
-   *📜「 MISSIONS RANG A (ADMIN) 」*
-   │ ◦ ${config.PREFIXE}kick • _Exil_
-   │ ◦ ${config.PREFIXE}kickall • _Purge_
-   │ ◦ ${config.PREFIXE}mode • _Flux_
-   │ ◦ ${config.PREFIXE}ping • _Vitesse_
-   
-   *🧬「 KEKKEI MŌRA (POUVOIRS) 」*
-   │ ◦ ${config.PREFIXE}ai • _Sagesse_
-   │ ◦ ${config.PREFIXE}vv • _Vision_
-   │ ◦ ${config.PREFIXE}sticker • _Sceau_
+        const darkImage = config.MENU_IMG || 'https://telegra.ph/file/0c9269550e68d011f0165.jpg';
 
-   🕯️ _"La volonté du clan ne meurt jamais."_
-
-   📍 *Dimension Otsutsuki | Brazzaville*
-   ⏰ *Heure :* ${time}`;
-
-        // --- ENVOI INTELLIGENT ET SÉCURISÉ ---
-        const menuImage = config.MENU_IMG || 'https://telegra.ph/file/0c9269550e68d011f0165.jpg';
-
-        try {
-            await sock.sendMessage(from, { 
-                image: { url: menuImage }, 
-                caption: texteMenu,
-                mentions: [sender],
-                contextInfo: {
-                    externalAdReply: {
-                        title: "ＯＴＳＵＴＳＵＫＩ ＳＹＳＴＥＭ",
-                        body: isOwner ? "Maître reconnu ✅" : "Shinobi identifié 👤",
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        thumbnailUrl: menuImage,
-                        sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
-                    }
+        await sock.sendMessage(from, { 
+            image: { url: darkImage }, 
+            caption: texteMenu,
+            mentions: [sender],
+            contextInfo: {
+                externalAdReply: {
+                    title: "ＯＴＳＵＴＳＵＫＩ  ＳＹＳＴＥＭ  Ｖ２",
+                    body: "Chakra Status: Stable | " + time,
+                    mediaType: 1,
+                    renderLargerThumbnail: true,
+                    thumbnailUrl: darkImage,
+                    sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
                 }
-            }, { quoted: m });
-        } catch (imgError) {
-            // Secours texte pur si l'image crash
-            console.log("⚠️ Problème d'image, envoi du texte seul.");
-            await sock.sendMessage(from, { text: texteMenu, mentions: [sender] }, { quoted: m });
-        }
+            }
+        }, { quoted: m });
 
     } catch (e) {
-        console.error("❌ Erreur critique Menu :", e);
+        console.error("Erreur Menu Style:", e);
+        // Secours si l'image crash encore
+        await sock.sendMessage(m.key.remoteJid, { text: "⚠️ Chakra instable. Menu en mode texte uniquement." });
     }
 };
