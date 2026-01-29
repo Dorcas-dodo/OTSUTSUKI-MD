@@ -12,12 +12,12 @@ const QRCode = require('qrcode');
 const messageHandler = require('./messages.upsert');
 
 const app = express();
-// Changement ici : Priorité au port fourni par l'hébergeur, sinon 8000
+// Priorité au port fourni par Koyeb
 const PORT = process.env.PORT || 8000; 
 let currentQR = null;
 let sock;
 
-// --- INTERFACE WEB (QR + PAIR) ---
+// --- INTERFACE WEB ---
 app.get('/', (req, res) => {
     res.send(`
         <html>
@@ -59,12 +59,12 @@ app.get('/', (req, res) => {
                         if(data.qr) {
                             document.getElementById('qr-img').src = data.qr;
                             document.getElementById('qr-img').style.display = 'block';
-                        } else { alert("QR non disponible. Patientez 5 sec."); }
+                        } else { alert("QR non disponible. Patientez ou rafraîchissez."); }
                     }
                     async function getPair() {
                         const num = document.getElementById('phone').value;
                         if(!num) return alert("Entrez un numéro !");
-                        document.getElementById('pair-display').innerText = "Attente...";
+                        document.getElementById('pair-display').innerText = "Génération...";
                         const res = await fetch('/pair?phone=' + num);
                         const data = await res.json();
                         document.getElementById('pair-display').innerText = data.code || data.error;
@@ -86,7 +86,11 @@ async function startBot() {
         },
         printQRInTerminal: true,
         logger: pino({ level: "fatal" }),
-        browser: ["Chrome (Linux)", "Chrome", "110.0.5481.177"]
+        // Modification : Identification plus stable pour les serveurs Linux
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // Ajout : Délai d'attente prolongé pour éviter les échecs de connexion sur Koyeb
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -99,10 +103,11 @@ async function startBot() {
         }
         if (connection === 'open') {
             currentQR = null;
-            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ !");
+            console.log("🚀 OTSUTSUKI-MD : CONNECTÉ AVEC SUCCÈS !");
         }
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log("❌ Connexion perdue. Reconnexion :", shouldReconnect);
             if (shouldReconnect) startBot();
         }
     });
@@ -119,14 +124,16 @@ app.get('/pair', async (req, res) => {
     let phone = req.query.phone;
     if (!phone) return res.json({ error: "Numéro requis" });
     try {
+        // Nettoyage du numéro et demande du code
         const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
         res.json({ code: code });
     } catch (err) { 
-        res.json({ error: "Erreur lors de la génération" }); 
+        console.log(err);
+        res.json({ error: "Erreur (vérifiez les logs)" }); 
     }
 });
 
-// Écoute sur le port 8000
+// Lancement du serveur
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Serveur prêt sur le port ${PORT}`);
     startBot();
