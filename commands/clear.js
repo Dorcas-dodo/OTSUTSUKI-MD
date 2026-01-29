@@ -1,9 +1,9 @@
-module.exports = {
-    name: "clear",
-    async execute(sock, from, msg, args, config) {
-        if (!msg.key.fromMe) return sock.sendMessage(from, { text: "❌ Seul mon Master peut utiliser cette commande." });
-        
-        await sock.chatModify({ delete: true, lastMessages: [{ key: msg.key, messageTimestamp: msg.messageTimestamp }] }, from);
-        await sock.sendMessage(from, { text: "🧹 Chat nettoyé avec succès par OTSUTSUKI-MD !" });
+module.exports = async (sock, m, args) => {
+    try {
+        const from = m.key.remoteJid;
+        await sock.chatModify({ delete: true, lastMessages: [{ key: m.key, messageTimestamp: m.messageTimestamp }] }, from);
+        await sock.sendMessage(from, { text: "✨ *Chat purifié par le pouvoir Otsutsuki.*" });
+    } catch (e) {
+        await sock.sendMessage(m.key.remoteJid, { text: "❌ Impossible de purifier ce chat." });
     }
 };
