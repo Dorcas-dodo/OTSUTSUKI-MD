@@ -1,17 +1,14 @@
 const axios = require('axios');
 
-module.exports = {
-    name: "gpt",
-    async execute(sock, from, msg, args, config) {
-        if (!args[0]) return sock.sendMessage(from, { text: "Pose-moi une question !" });
+module.exports = async (sock, m, args) => {
+    const text = args.join(" ");
+    if (!text) return sock.sendMessage(m.key.remoteJid, { text: "🏮 Posez votre question à l'esprit Otsutsuki." });
 
-        try {
-            const query = args.join(" ");
-            const res = await axios.get(`https://api.vreden.my.id/api/gpt4?text=${encodeURIComponent(query)}`);
-            
-            await sock.sendMessage(from, { text: `🤖 *OTSUTSUKI-AI* :\n\n${res.data.result}` }, { quoted: msg });
-        } catch (e) {
-            await sock.sendMessage(from, { text: "❌ L'IA est fatiguée, réessaie plus tard." });
-        }
+    try {
+        // Utilisation d'une API gratuite (exemple : Simsimi ou autre GPT free)
+        const response = await axios.get(`https://api.simsimi.vn/v1/simtalk?text=${encodeURIComponent(text)}&lc=fr`);
+        await sock.sendMessage(m.key.remoteJid, { text: `👁️‍🗨️ *OTSUTSUKI-AI* :\n\n${response.data.message}` }, { quoted: m });
+    } catch (e) {
+        await sock.sendMessage(m.key.remoteJid, { text: "❌ Connexion avec l'au-delà interrompue." });
     }
 };
