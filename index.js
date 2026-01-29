@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 8000;
 let currentQR = null;
 let sock;
 
-// --- INTERFACE WEB (Injectée directement) ---
+// --- INTERFACE WEB ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -55,7 +55,6 @@ app.get('/', (req, res) => {
             </div>
 
             <script>
-                // Mise à jour automatique du QR
                 async function checkStatus() {
                     const res = await fetch('/get-qr');
                     const data = await res.json();
@@ -88,12 +87,13 @@ app.get('/', (req, res) => {
 // --- LOGIQUE DU BOT ---
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session');
+    
     sock = makeWASocket({
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
         },
-        printQRInTerminal: true, // Affiche aussi dans la console Koyeb
+        printQRInTerminal: true,
         browser: ["Otsutsuki-MD", "Chrome", "1.0.0"]
     });
 
@@ -101,13 +101,39 @@ async function startBot() {
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, qr, lastDisconnect } = update;
+        
         if (qr) currentQR = await QRCode.toDataURL(qr);
+
         if (connection === 'open') {
             currentQR = "connected";
-            console.log("🏮 OTSUTSUKI-MD : Connecté !");
+            console.log("🏮 OTSUTSUKI-MD : Connecté avec succès !");
+
+            // --- NOTIFICATION D'IDENTIFICATION ---
+            const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+            const userName = sock.user.name || "Shinobi";
+            
+            const notifyMsg = `⛩️ *NOTIF DE DÉPLOIEMENT* ⛩️\n\n` +
+                              `👤 *Nom :* ${userName}\n` +
+                              `📱 *Numéro :* @${userJid.split('@')[0]}\n` +
+                              `🧬 *Statut :* Session Active\n\n` +
+                              `🌑 _L'oeil du Otsutsuki est désormais ouvert sur ce compte._`;
+
+            // Envoi de la notification au compte qui vient de scanner
+            await sock.sendMessage(userJid, { 
+                text: notifyMsg, 
+                mentions: [userJid] 
+            });
+
+            // Envoi de la notification à l'owner (si différent)
+            const ownerJid = config.OWNER_NUMBER.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+            if (userJid !== ownerJid) {
+                await sock.sendMessage(ownerJid, { text: `📢 *Alerte :* Le bot a été scanné par ${userName} (${userJid.split('@')[0]})` });
+            }
         }
+
         if (connection === 'close') {
-            if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) startBot();
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) startBot();
         }
     });
 
@@ -118,11 +144,16 @@ async function startBot() {
 
 // --- ROUTES API ---
 app.get('/get-qr', (req, res) => res.json({ qr: currentQR === "connected" ? null : currentQR, connected: currentQR === "connected" }));
+
 app.get('/pair', async (req, res) => {
     let phone = req.query.phone;
     if (!phone) return res.json({ error: "No phone" });
-    const code = await sock.requestPairingCode(phone);
-    res.json({ code });
+    try {
+        const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
+        res.json({ code });
+    } catch (err) {
+        res.json({ error: "Erreur serveur" });
+    }
 });
 
 app.listen(PORT, () => {
