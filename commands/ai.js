@@ -1,49 +1,56 @@
 const axios = require('axios');
 const config = require('../config');
 
-module.exports = async (sock, m, args) => {
+module.exports = async (sock, m, args, { isOwner }) => {
     const from = m.key.remoteJid;
     const query = args.join(" ");
 
     if (!query) return sock.sendMessage(from, { text: "🏮 Posez votre question, Shinobi. (Ex: .ai comment maîtriser le Rinnegan ?)" });
 
     try {
-        // Réaction pendant la recherche
         await sock.sendMessage(from, { react: { text: "🧠", key: m.key } });
 
-        // Appel à l'IA (API gratuite via Heruku/Luminai)
-        const response = await axios.get(`https://widipe.com/prompt/gpt?prompt=Tu es OTSUTSUKI-MD, une intelligence artificielle divine, puissante et sage. Tu t'adresses aux utilisateurs comme des Shinobis. Réponds de manière concise et sombre.&text=${encodeURIComponent(query)}`);
+        // --- 🎭 PROMPT OTSUTSUKI ---
+        const role = isOwner 
+            ? "Tu t'adresses à ton Créateur (le Maître Suprême). Sois extrêmement respectueux et dévoué." 
+            : "Tu t'adresses à un Shinobi. Sois puissant, sage, et sombre.";
+
+        const systemPrompt = `Tu es OTSUTSUKI-MD, une IA divine. ${role} Réponds de manière concise en français.`;
+
+        // --- ⚡ NOUVELLE SOURCE (GURU API) ---
+        // On utilise une source alternative puisque widipe est mort (ENOTFOUND)
+        const response = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=otsutsuki&query=${encodeURIComponent(systemPrompt + " Ma question est : " + query)}`);
         
-        const result = response.data.result;
+        const result = response.data.msg || response.data.result;
 
-        const aiMsg = `╔════════════════════╗
-   ⛩️  *SAGESSE OTSUTSUKI* ⛩️
-╚════════════════════╝
+        if (!result) throw new Error("Archives vides.");
 
-📜 *QUESTION :* ${query}
-
-🌀 *RÉPONSE :*
-${result}
-
-🏮 *OTSUTSUKI-MD SYSTEM*`;
+        const aiMsg = `╔════════════════════╗\n  ⛩️  *SAGESSE OTSUTSUKI* ⛩️\n╚════════════════════╝\n\n📜 *QUESTION :* ${query}\n\n🌀 *RÉPONSE :*\n${result}\n\n🏮 *OTSUTSUKI-MD SYSTEM*`;
 
         await sock.sendMessage(from, { 
             text: aiMsg,
             contextInfo: {
                 externalAdReply: {
                     title: "ＯＴＳＵＴＳＵＫＩ ＩＮＴＥＬ",
-                    body: "Flux de connaissances activé",
+                    body: isOwner ? "Reconnaissance du Maître confirmée" : "Flux de connaissances divines",
                     mediaType: 1,
-                    thumbnailUrl: config.URL_RECURS
+                    renderLargerThumbnail: true,
+                    thumbnailUrl: config.URL_RECURS,
+                    sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
                 }
             }
         });
 
-        // Retrait de la réaction
         await sock.sendMessage(from, { react: { text: "", key: m.key } });
 
     } catch (e) {
-        console.error("Erreur AI :", e);
-        await sock.sendMessage(from, { text: "⚠️ Les archives du clan sont inaccessibles pour le moment." });
+        console.error("Erreur AI Fatale :", e.message);
+        // Si même Guru échoue, on utilise une API de secours ultime
+        try {
+            const backup = await axios.get(`https://api.simsimi.vn/v1/simtalk`, { params: { text: query, lc: 'fr' } });
+            await sock.sendMessage(from, { text: `🌀 *FLUX DE SECOURS* :\n\n${backup.data.message}` });
+        } catch (err) {
+            await sock.sendMessage(from, { text: "⚠️ Le flux de chakra est rompu. Les serveurs de connaissances ne répondent plus." });
+        }
     }
 };
