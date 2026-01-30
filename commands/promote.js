@@ -1,50 +1,55 @@
 module.exports = async (sock, m, args, { isOwner }) => {
-    try {
-        const from = m.key.remoteJid;
+    const from = m.key.remoteJid;
 
-        // --- 1. VÉRIFICATION SI GROUPE ---
+    try {
         if (!from.endsWith('@g.us')) {
-            return m.reply("🏮 Cette technique ne fonctionne que dans les temples (groupes).");
+            return sock.sendMessage(from, { text: "🏮 Cette technique ne s'utilise que dans un groupe." }, { quoted: m });
         }
 
-        // --- 2. RÉCUPÉRATION DES DROITS (TA LOGIQUE) ---
+        // --- 🔎 RÉCUPÉRATION ET REFRESH DES DROITS ---
         const groupMetadata = await sock.groupMetadata(from);
         const participants = groupMetadata.participants;
-        const sender = m.key.participant || m.key.remoteJid;
+        
+        // On récupère le numéro pur du bot (ex: 242066969267) sans les suffixes :1@s.wha...
+        const botNumber = (sock.user.id.split(':')[0] || sock.user.id).split('@')[0];
+        
+        // On cherche le bot dans la liste en comparant uniquement le numéro
+        const botInGroup = participants.find(p => p.id.startsWith(botNumber));
+        const isBotAdmin = !!(botInGroup && (botInGroup.admin === 'admin' || botInGroup.isSuperAdmin || botInGroup.admin === 'superadmin'));
 
-        const isAdmin = participants.find(p => p.id === sender)?.admin;
-        const botNumber = sock.user.id.split(':')[0];
-        const isBotAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
-
-        // --- 3. LOGIQUE DE PERMISSION ---
-        if (!isOwner && !isAdmin) {
-            return sock.sendMessage(from, { text: "🏮 Seuls les hauts gradés ou le Maître peuvent élever un Shinobi." });
-        }
+        // Debug console pour voir ce que le bot "pense" réellement
+        console.log(`🔍 [VÉRIF ADMIN] Bot Num: ${botNumber} | Statut Admin: ${isBotAdmin}`);
 
         if (!isBotAdmin) {
-            return sock.sendMessage(from, { text: "❌ Action impossible : L'Otsutsuki-MD n'est pas Administrateur de ce groupe." });
+            return sock.sendMessage(from, { 
+                text: "❌ Action impossible : L'Otsutsuki-MD n'est pas Administrateur.\n\n💡 *Note :* Si je suis admin, retire-moi et remets-moi admin pour rafraîchir mon Chakra." 
+            }, { quoted: m });
         }
 
-        // --- 4. RÉCUPÉRATION DE LA CIBLE ---
-        // On vérifie : mention dans le texte, réponse à un message, ou numéro en argument
+        if (!isOwner) {
+            const sender = m.key.participant || m.key.remoteJid;
+            const senderInGroup = participants.find(p => p.id === sender);
+            const isAdmin = !!(senderInGroup?.admin);
+            if (!isAdmin) return sock.sendMessage(from, { text: "🏮 Seul un haut gradé ou le Maître peut promouvoir." }, { quoted: m });
+        }
+
+        // --- CIBLE ---
         let target = m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
                      m.message?.extendedTextMessage?.contextInfo?.participant || 
                      (args[0] ? args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null);
 
-        if (!target) {
-            return m.reply("🏮 Mentionne ou réponds au Shinobi à nommer Administrateur.");
-        }
+        if (!target) return sock.sendMessage(from, { text: "🏮 Mentionne le Shinobi à promouvoir." }, { quoted: m });
 
-        // --- 5. EXÉCUTION DE LA PROMOTION ---
+        // --- ACTION ---
         await sock.groupParticipantsUpdate(from, [target], "promote");
-
+        
         await sock.sendMessage(from, { 
-            text: `✨ *PROMOTION* : Le Shinobi @${target.split('@')[0]} a été élevé au rang d'Administrateur par décret du clan.`, 
+            text: `✨ @${target.split('@')[0]} a été élevé au rang d'Administrateur.`, 
             mentions: [target] 
-        });
+        }, { quoted: m });
 
     } catch (e) {
         console.error("Erreur Promote :", e);
-        m.reply("⚠️ Le flux de chakra est perturbé. Impossible de promouvoir ce membre.");
+        await sock.sendMessage(from, { text: "⚠️ Échec de la promotion. Le chakra est instable." }, { quoted: m });
     }
 };
