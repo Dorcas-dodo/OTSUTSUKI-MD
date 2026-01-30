@@ -5,9 +5,12 @@ module.exports = async (sock, m, args, { isOwner }) => {
     const from = m.key.remoteJid;
     const query = args.join(" ");
 
-    if (!query) return sock.sendMessage(from, { text: "🏮 Posez votre question, Shinobi. (Ex: .ai comment maîtriser le Rinnegan ?)" });
+    if (!query) {
+        return sock.sendMessage(from, { text: "🏮 Posez votre question, Shinobi. (Ex: .ai comment maîtriser le Rinnegan ?)" }, { quoted: m });
+    }
 
     try {
+        // Réaction de réflexion
         await sock.sendMessage(from, { react: { text: "🧠", key: m.key } });
 
         // --- 🎭 PROMPT OTSUTSUKI ---
@@ -17,13 +20,20 @@ module.exports = async (sock, m, args, { isOwner }) => {
 
         const systemPrompt = `Tu es OTSUTSUKI-MD, une IA divine. ${role} Réponds de manière concise en français.`;
 
-        // --- ⚡ NOUVELLE SOURCE (GURU API) ---
-        // On utilise une source alternative puisque widipe est mort (ENOTFOUND)
-        const response = await axios.get(`https://api.guruapi.tech/ai/gpt4?username=otsutsuki&query=${encodeURIComponent(systemPrompt + " Ma question est : " + query)}`);
-        
-        const result = response.data.msg || response.data.result;
+        let result = "";
 
-        if (!result) throw new Error("Archives vides.");
+        // --- ⚡ FLUX PRINCIPAL (SANDIP API - Très stable) ---
+        try {
+            const response = await axios.get(`https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(systemPrompt + " Ma question est : " + query)}`);
+            result = response.data.answer;
+        } catch (err) {
+            console.error("Erreur Flux 1:", err.message);
+            // --- ⚡ FLUX DE SECOURS (SIMSIMI) ---
+            const backup = await axios.get(`https://api.simsimi.vn/v1/simtalk`, { params: { text: query, lc: 'fr' } });
+            result = backup.data.message + "\n\n*(Note: Flux de secours activé)*";
+        }
+
+        if (!result || result.length < 2) throw new Error("Réponse vide");
 
         const aiMsg = `╔════════════════════╗\n  ⛩️  *SAGESSE OTSUTSUKI* ⛩️\n╚════════════════════╝\n\n📜 *QUESTION :* ${query}\n\n🌀 *RÉPONSE :*\n${result}\n\n🏮 *OTSUTSUKI-MD SYSTEM*`;
 
@@ -39,18 +49,13 @@ module.exports = async (sock, m, args, { isOwner }) => {
                     sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
                 }
             }
-        });
+        }, { quoted: m });
 
+        // Retrait de la réaction
         await sock.sendMessage(from, { react: { text: "", key: m.key } });
 
     } catch (e) {
         console.error("Erreur AI Fatale :", e.message);
-        // Si même Guru échoue, on utilise une API de secours ultime
-        try {
-            const backup = await axios.get(`https://api.simsimi.vn/v1/simtalk`, { params: { text: query, lc: 'fr' } });
-            await sock.sendMessage(from, { text: `🌀 *FLUX DE SECOURS* :\n\n${backup.data.message}` });
-        } catch (err) {
-            await sock.sendMessage(from, { text: "⚠️ Le flux de chakra est rompu. Les serveurs de connaissances ne répondent plus." });
-        }
+        await sock.sendMessage(from, { text: "⚠️ Le flux de chakra est rompu. Les archives sont inaccessibles, réessayez plus tard." }, { quoted: m });
     }
 };
