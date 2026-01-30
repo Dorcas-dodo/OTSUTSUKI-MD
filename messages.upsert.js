@@ -8,7 +8,17 @@ module.exports = async (sock, chatUpdate) => {
         if (!m || !m.message) return;
 
         const from = m.key.remoteJid;
+        
+        // --- 🟢 DÉFINITION DE M.REPLY (POUR FIXER L'ERREUR) ---
+        m.reply = async (text, options = {}) => {
+            return await sock.sendMessage(from, { 
+                text: text, 
+                mentions: options.mentions || [] 
+            }, { quoted: m });
+        };
+
         const isGroup = from.endsWith('@g.us');
+        m.isGroup = isGroup; // Utile pour les commandes
         
         const text = m.message.conversation || 
                      m.message.extendedTextMessage?.text || 
@@ -48,7 +58,6 @@ module.exports = async (sock, chatUpdate) => {
                 isBotAdmin = check.isBotAdmin;
                 isSenderAdmin = check.isSenderAdmin;
                 
-                // LOG DE DEBUG UNIQUE (Apparaîtra à chaque message en groupe)
                 console.log(`🛡️ [GROUPE] BotAdmin: ${isBotAdmin} | SenderAdmin: ${isSenderAdmin} | User: ${cleanSender}`);
             } catch (adminErr) {
                 console.error("❌ Erreur isAdminFunc :", adminErr);
@@ -72,8 +81,6 @@ module.exports = async (sock, chatUpdate) => {
                     await sock.sendMessage(from, { delete: m.key });
                     await sock.groupParticipantsUpdate(from, [sender], "remove");
                     return;
-                } else {
-                    console.log("⚠️ Antilink détecté mais le bot n'est PAS admin.");
                 }
             }
         }
@@ -87,19 +94,15 @@ module.exports = async (sock, chatUpdate) => {
         const args = text.slice(prefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
         
-        // On cherche la commande dans le dossier 'commands'
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
-            // Petit clin d'œil visuel
             await sock.sendMessage(from, { react: { text: "🌀", key: m.key } });
             
-            // Rechargement à chaud (Hot Reload)
             delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
             try {
-                // IMPORTANT : On transmet les variables de droits à la commande
                 const cmdOptions = { 
                     isOwner, 
                     isBotAdmin, 
@@ -117,12 +120,12 @@ module.exports = async (sock, chatUpdate) => {
                     await command.execute(sock, m, args, cmdOptions);
                 }
                 
-                // Retrait de la réaction après succès
                 await sock.sendMessage(from, { react: { text: "", key: m.key } });
             } catch (cmdErr) {
                 console.error(`❌ Erreur dans la commande ${cmdName}:`, cmdErr);
                 await sock.sendMessage(from, { react: { text: "❌", key: m.key } });
-                await sock.sendMessage(from, { text: `⛩️ *Erreur Otsutsuki* : ${cmdErr.message}` }, { quoted: m });
+                // Ici m.reply fonctionnera car on l'a défini en haut
+                await m.reply(`⛩️ *Erreur Otsutsuki* : ${cmdErr.message}`);
             }
         }
     } catch (err) {
