@@ -1,0 +1,128 @@
+const config = require('../config');
+
+
+
+module.exports = async (sock, anu) => {
+
+    try {
+
+        const { id, participants, action } = anu;
+
+        
+
+        for (let num of participants) {
+
+            // --- RÉCUPÉRATION DE LA PHOTO DE PROFIL ---
+
+            let ppuser;
+
+            try {
+
+                ppuser = await sock.profilePictureUrl(num, 'image');
+
+            } catch {
+
+                ppuser = 'https://telegra.ph/file/40938b819f72365269784.jpg'; // Image par défaut
+
+            }
+
+
+
+            // --- 🟢 LOGIQUE DE BIENVENUE (WELCOME) ---
+
+            if (action === 'add' && config.WELCOME === 'true') {
+
+                let welcomeText = `⛩️ *BIENVENUE CHEZ LES OTSUTSUKI* ⛩️\n\n` +
+
+                                  `🏮 @${num.split("@")[0]}, ton chakra a été détecté dans cette dimension.\n\n` +
+
+                                  `_Prépare-toi à l'ascension divine._`;
+
+
+
+                await sock.sendMessage(id, {
+
+                    text: welcomeText,
+
+                    mentions: [num],
+
+                    contextInfo: {
+
+                        externalAdReply: {
+
+                            title: "ＯＴＳＵＴＳＵＫＩ  ＳＵＭＭＯＮ",
+
+                            body: "Nouveau Shinobi détecté",
+
+                            mediaType: 1,
+
+                            renderLargerThumbnail: true,
+
+                            thumbnailUrl: ppuser,
+
+                            sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
+
+                        }
+
+                    }
+
+                });
+
+            } 
+
+            
+
+            // --- 🔴 LOGIQUE DE DÉPART (GOODBYE) ---
+
+            else if (action === 'remove' && config.GOODBYE === 'true') {
+
+                let goodbyeText = `🌀 *EXIL DE LA DIMENSION* 🌀\n\n` +
+
+                                  `Le Shinobi @${num.split("@")[0]} a quitté le clan.\n` +
+
+                                  `Son nom et son chakra sont effacés des archives.\n\n` +
+
+                                  `_L'œil céleste se ferme sur lui._`;
+
+
+
+                await sock.sendMessage(id, {
+
+                    text: goodbyeText,
+
+                    mentions: [num],
+
+                    contextInfo: {
+
+                        externalAdReply: {
+
+                            title: "ＯＴＳＵＴＳＵＫＩ  ＥＸＩＬ",
+
+                            body: "Un membre s'est évanoui dans le néant",
+
+                            mediaType: 1,
+
+                            renderLargerThumbnail: true,
+
+                            thumbnailUrl: ppuser,
+
+                            sourceUrl: "https://github.com/Dorcas-dodo/OTSUTSUKI-MD"
+
+                        }
+
+                    }
+
+                });
+
+            }
+
+        }
+
+    } catch (e) {
+
+        console.error("Erreur Event Group Update :", e);
+
+    }
+
+};
+
