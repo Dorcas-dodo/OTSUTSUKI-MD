@@ -1,10 +1,10 @@
 const config = require('../config');
 
-module.exports = async (sock, m, args, { isOwner }) => {
+module.exports = async (sock, m, args, { isOwner, isBotAdmin }) => {
     try {
         const from = m.key.remoteJid;
 
-        // 1. SÉCURITÉ MAÎTRE (Priorité absolue via le Handler)
+        // 1. SÉCURITÉ MAÎTRE
         if (!isOwner) {
             return sock.sendMessage(from, { text: "🏮 Seul un membre du clan supérieur peut utiliser l'Exil." });
         }
@@ -14,17 +14,9 @@ module.exports = async (sock, m, args, { isOwner }) => {
             return sock.sendMessage(from, { text: "🏮 Cette technique ne peut être utilisée que dans un groupe." });
         }
 
-        // 3. VÉRIFICATION ADMIN BOT (VERSION ROBUSTE)
-        const groupMetadata = await sock.groupMetadata(from);
-        const participants = groupMetadata.participants;
-        
-        // Extraction propre de l'ID numérique du bot
-        const botNumber = sock.user.id.split(':')[0];
-        // On cherche si un participant admin contient ce numéro
-        const isBotAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
-
+        // 3. UTILISATION DE LA VÉRIFICATION DU HANDLER
         if (!isBotAdmin) {
-            return sock.sendMessage(from, { text: "❌ Erreur : Je dois être admin du groupe pour exiler quelqu'un." });
+            return sock.sendMessage(from, { text: "❌ Erreur : L'Otsutsuki-MD doit être administrateur pour cette invocation." });
         }
 
         // 4. RÉCUPÉRATION DE LA CIBLE
@@ -36,7 +28,8 @@ module.exports = async (sock, m, args, { isOwner }) => {
             return sock.sendMessage(from, { text: "🏮 Mentionnez ou répondez au Shinobi à bannir." });
         }
 
-        // Empêcher le bot de se kick lui-même (en vérifiant le numéro)
+        // Empêcher le bot de s'auto-exiler
+        const botNumber = sock.user.id.split(':')[0];
         if (users.includes(botNumber)) {
             return sock.sendMessage(from, { text: "🌀 Je ne peux pas m'exiler moi-même de cette dimension." });
         }
