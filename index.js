@@ -17,10 +17,24 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 8000; 
 
-// --- CONNEXION MONGODB ATLAS ---
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log("🍃 OTSUTSUKI-MD : Base de données connectée !"))
-    .catch(err => console.error("❌ Erreur MongoDB :", err));
+// --- CONNEXION MONGODB ATLAS (CORRIGÉE) ---
+const mongoURI = process.env.MONGODB_URI;
+
+if (!mongoURI) {
+    console.error("❌ ERREUR : La variable MONGODB_URI est absente sur Koyeb !");
+} else {
+    mongoose.connect(mongoURI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    })
+    .then(() => console.log("🍃 OTSUTSUKI-MD : Base de données connectée avec succès !"))
+    .catch(err => {
+        console.error("❌ ERREUR AUTHENTIFICATION MONGODB :");
+        console.error("1. Vérifie si l'utilisateur et le mot de passe dans le lien sont corrects.");
+        console.error("2. Vérifie si tu as autorisé l'accès IP 0.0.0.0/0 sur MongoDB Atlas.");
+        console.error("Détails :", err.message);
+    });
+}
 
 // --- GESTION MULTI-SESSIONS ---
 let activeSocks = {};
@@ -68,7 +82,6 @@ async function startBot(userId = "main_admin") {
                          `🚀 *Félicitations Shinobi !*\n` +
                          `L'identité *${userId}* est désormais liée au flux divin.\n\n` +
                          `🔹 *Statut :* Maître du Système\n` +
-                         `🔹 *Base de données :* Scellée (MongoDB)\n` +
                          `🔹 *Hébergement :* Koyeb Cloud\n\n` +
                          `_Utilise .menu pour déployer ta puissance._`
             });
@@ -77,8 +90,10 @@ async function startBot(userId = "main_admin") {
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
             if (reason !== DisconnectReason.loggedOut) {
+                console.log(`🔄 Reconnexion en cours pour ${userId}...`);
                 setTimeout(() => startBot(userId), 5000);
             } else {
+                console.log(`🚫 Session déconnectée pour ${userId}. Nettoyage...`);
                 delete activeSocks[userId];
                 if (fs.existsSync(sessionDir)) fs.rmSync(sessionDir, { recursive: true });
             }
@@ -96,7 +111,7 @@ async function startBot(userId = "main_admin") {
     return sock;
 }
 
-// --- INTERFACE WEB ---
+// --- INTERFACE WEB (Simplifiée pour la lecture) ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -200,7 +215,7 @@ app.get('/connect/:id', (req, res) => {
                             display.classList.remove('hidden');
                             btn.innerText = "Code Obtenu";
                         } else {
-                            alert("Échec");
+                            alert("Échec : " + (data.error || "inconnu"));
                             btn.disabled = false;
                         }
                     } catch (e) { btn.disabled = false; }
@@ -225,7 +240,10 @@ app.get('/get-pair/:id', async (req, res) => {
     try {
         const code = await sock.requestPairingCode(phone);
         res.json({ code });
-    } catch (err) { res.json({ error: "Échec technique" }); }
+    } catch (err) { 
+        console.error("Erreur Pairing Code:", err);
+        res.json({ error: "Échec technique" }); 
+    }
 });
 
 app.listen(PORT, () => {
