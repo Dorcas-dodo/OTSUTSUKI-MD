@@ -103,6 +103,11 @@ app.get('/', (req, res) => {
 
 // --- LOGIQUE DU BOT ---
 async function startBot() {
+    // Création du dossier session si inexistant
+    if (!fs.existsSync('./session')) {
+        fs.mkdirSync('./session');
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState('session');
     const { version } = await fetchLatestBaileysVersion();
     
@@ -114,7 +119,6 @@ async function startBot() {
         },
         printQRInTerminal: true,
         logger: pino({ level: "fatal" }),
-        // MISE À JOUR : On utilise Safari/MacOS pour éviter le blocage WhatsApp
         browser: ["Otsutsuki-MD", "Safari", "1.0.0"], 
         syncFullHistory: false,
         markOnlineOnConnect: true,
@@ -151,11 +155,10 @@ async function startBot() {
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
-            console.log("Connexion fermée. Raison :", reason);
             if (reason !== DisconnectReason.loggedOut) {
-                startBot();
+                setTimeout(() => startBot(), 5000);
             } else {
-                console.log("Session déconnectée. Supprimez le dossier 'session' et relancez.");
+                console.log("Session déconnectée.");
             }
         }
     });
@@ -170,4 +173,22 @@ async function startBot() {
 }
 
 // --- ROUTES API ---
-app.get('/get-qr', (
+app.get('/get-qr', (req, res) => res.json({ qr: currentQR === "connected" ? null : currentQR, connected: currentQR === "connected" }));
+
+app.get('/pair', async (req, res) => {
+    let phone = req.query.phone;
+    if (!phone) return res.json({ error: "Numéro requis" });
+    if (!sock) return res.json({ error: "Système en cours de démarrage... Réessaie dans 10 secondes." });
+
+    try {
+        const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
+        res.json({ code });
+    } catch (err) {
+        res.json({ error: "WhatsApp bloque la demande. Réessaie avec le QR Code ou change de numéro." });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log("🌐 Serveur OTSUTSUKI sur port " + PORT);
+    startBot();
+});
