@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const isAdminFunc = require('./lib/isAdmin'); // Assure-toi que le chemin est correct
 
 module.exports = async (sock, chatUpdate) => {
     try {
@@ -19,8 +20,6 @@ module.exports = async (sock, chatUpdate) => {
 
         // --- 🔎 RECONNAISSANCE MAÎTRE DYNAMIQUE ---
         const cleanSender = sender.split('@')[0].replace(/[^0-9]/g, '');
-        
-        // Chargement des owners additionnels (via commande addowner)
         const ownersPath = './data/owners.json';
         let extraOwners = [];
         if (fs.existsSync(ownersPath)) {
@@ -31,12 +30,21 @@ module.exports = async (sock, chatUpdate) => {
         const master2 = '225232933638352'; 
         const cleanOwner = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : master1;
         
-        // Le sender est owner s'il est dans la config, les masters fixes ou la liste JSON
         const isOwner = m.key.fromMe || 
-                        cleanSender.includes(master1) || 
-                        cleanSender.includes(master2) || 
-                        cleanSender.includes(cleanOwner) ||
+                        cleanSender === master1 || 
+                        cleanSender === master2 || 
+                        cleanSender === cleanOwner ||
                         extraOwners.includes(cleanSender);
+
+        // --- 🛡️ VÉRIFICATION DES DROITS (ADMINS) ---
+        let isBotAdmin = false;
+        let isSenderAdmin = false;
+
+        if (isGroup) {
+            const check = await isAdminFunc(sock, from, sender);
+            isBotAdmin = check.isBotAdmin;
+            isSenderAdmin = check.isSenderAdmin;
+        }
 
         // --- 🚫 VÉRIFICATION DU BANNISSEMENT ---
         const bannedPath = './data/banned.json';
@@ -45,17 +53,11 @@ module.exports = async (sock, chatUpdate) => {
             if (bannedList.includes(sender)) return;
         }
 
-        // --- 1. SYSTÈME ANTILINK ---
+        // --- 1. SYSTÈME ANTILINK (UTILISE LES NOUVELLES VARIABLES) ---
         if (isGroup && config.ANTILINK === "true") {
             const linkPattern = /https?:\/\/\S+|chat\.whatsapp\.com\/\S+/i;
-            if (linkPattern.test(text)) {
-                const groupMetadata = await sock.groupMetadata(from);
-                const participants = groupMetadata.participants;
-                const isAdmin = participants.find(p => p.id === sender)?.admin;
-                const botNumber = sock.user.id.split(':')[0];
-                const isBotAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
-
-                if (!isAdmin && isBotAdmin) {
+            if (linkPattern.test(text) && !isSenderAdmin && !isOwner) {
+                if (isBotAdmin) {
                     await sock.sendMessage(from, { delete: m.key });
                     await sock.groupParticipantsUpdate(from, [sender], "remove");
                     return;
@@ -80,10 +82,13 @@ module.exports = async (sock, chatUpdate) => {
             const command = require(commandPath);
             
             try {
+                // On passe isBotAdmin et isSenderAdmin à la commande !
+                const cmdOptions = { isOwner, isBotAdmin, isSenderAdmin };
+                
                 if (typeof command === 'function') {
-                    await command(sock, m, args, { isOwner });
+                    await command(sock, m, args, cmdOptions);
                 } else if (command.execute) {
-                    await command.execute(sock, m, args, { isOwner });
+                    await command.execute(sock, m, args, cmdOptions);
                 }
                 await sock.sendMessage(from, { react: { text: "", key: m.key } });
             } catch (cmdErr) {
