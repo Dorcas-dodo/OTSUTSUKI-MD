@@ -1,50 +1,20 @@
-const os = require('os');
-const moment = require('moment-timezone');
-const config = require('../config');
+FROM node:20
 
-module.exports = async (sock, m, args) => {
-    const time = moment.tz(config.TIMEZONE).format('HH:mm:ss');
-    const date = moment.tz(config.TIMEZONE).format('DD/MM/YYYY');
-    
-    // Calcul de l'uptime (temps de fonctionnement)
-    const uptime = process.uptime();
-    const hours = Math.floor(uptime / 3600);
-    const minutes = Math.floor((uptime % 3600) / 60);
-    const seconds = Math.floor(uptime % 60);
+# Installation des outils système pour le traitement média
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    imagemagick \
+    webp \
+    && apt-get clean
 
-    const menuText = `
-⛩️ *OTSUTSUKI-MD* ⛩️
+WORKDIR /usr/src/app
 
-*👤 Utilisateur :* @${m.senderNumber}
-*📅 Date :* ${date}
-*🕒 Heure :* ${time}
-*⌛ En ligne :* ${hours}h ${minutes}m ${seconds}s
-*🛠️ Préfixe :* [ ${config.PREFIXE} ]
-*🌌 Mode :* ${config.MODE}
+# Copie et installation des dépendances
+COPY package.json ./
+RUN npm install
 
---- *📜 LISTE DES TECHNIQUES* ---
+# Copie du reste du code source
+COPY . .
 
-*💠 COMMANDES ADMIN*
-> 🌀 ${config.PREFIXE}kick - Exiler un membre
-> 🌀 ${config.PREFIXE}promote - Nommer un admin
-> 🌀 ${config.PREFIXE}demote - Destituer un admin
-> 🌀 ${config.PREFIXE}tagall - Appel du clan
-
-*💠 COMMANDES GÉNÉRALES*
-> 🌀 ${config.PREFIXE}menu - Afficher ce parchemin
-> 🌀 ${config.PREFIXE}ping - Vitesse du bot
-> 🌀 ${config.PREFIXE}owner - Contacter le créateur
-
-*💠 PROTECTION*
-> 🌀 Anti-Link : ${config.ANTILINK ? '✅ Actif' : '❌ Inactif'}
-
------------------------------
-*POWERED BY OTSUTSUKI-MD*
-    `.trim();
-
-    await sock.sendMessage(m.chat, {
-        image: { url: config.URL_RECURS }, // Utilise l'URL de secours définie dans ta config
-        caption: menuText,
-        mentions: [m.sender]
-    }, { quoted: m });
-};
+# Lancement du bot
+CMD ["node", "index.js"]
