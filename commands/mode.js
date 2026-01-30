@@ -1,24 +1,45 @@
-const fs = require('fs');
+const config = require('../config');
 
-module.exports = async (sock, m, args) => {
-    const from = m.key.remoteJid;
-    const config = require('../config'); // On remonte d'un dossier pour trouver config.js
-    
-    // Vérification : Seul le propriétaire peut changer le mode
-    const sender = m.key.participant || m.key.remoteJid;
-    const isOwner = sender.includes(config.OWNER_NUMBER); 
+module.exports = async (sock, m, args, { isOwner }) => {
+    try {
+        const from = m.key.remoteJid;
 
-    if (!isOwner) return sock.sendMessage(from, { text: "Seul le Grand Maître Otsutsuki peut changer le mode du système. ❌" });
+        // 1. SÉCURITÉ MAÎTRE (Utilise le passe-droit du Handler)
+        if (!isOwner) {
+            return sock.sendMessage(from, { 
+                text: "⚠️ *ACCÈS REFUSÉ* : Seul le Grand Maître Otsutsuki peut manipuler le flux du système. ❌" 
+            });
+        }
 
-    if (!args[0]) return sock.sendMessage(from, { text: "Utilisation : *.mode public* ou *.mode self*" });
+        // 2. VÉRIFICATION DE L'ARGUMENT
+        const targetMode = args[0]?.toLowerCase();
 
-    if (args[0].toLowerCase() === 'public') {
-        config.MODE = 'public';
-        await sock.sendMessage(from, { text: "🌐 *MODE SYSTÈME* : PUBLIC\n\nTous les Shinobis peuvent désormais interagir avec l'Otsutsuki-MD. ✅" });
-    } else if (args[0].toLowerCase() === 'self' || args[0].toLowerCase() === 'privé') {
-        config.MODE = 'self';
-        await sock.sendMessage(from, { text: "🔐 *MODE SYSTÈME* : PRIVÉ\n\nLe bot ne répondra désormais qu'au propriétaire. 🌑" });
-    } else {
-        await sock.sendMessage(from, { text: "Option invalide. Choisissez *public* ou *self*." });
+        if (!targetMode || (targetMode !== 'public' && targetMode !== 'self' && targetMode !== 'privé')) {
+            return sock.sendMessage(from, { 
+                text: `🏮 *CONFIGURATION DU MODE*\n\nUsage :\n◦ ${config.PREFIXE}mode public (Ouvert à tous)\n◦ ${config.PREFIXE}mode self (Réservé au Maître)` 
+            });
+        }
+
+        // 3. LOGIQUE DE BASCULEMENT
+        if (targetMode === 'public') {
+            config.MODE = 'public';
+            await sock.sendMessage(from, { 
+                text: "🌐 *DIMENSION OUVERTE*\n\nLe système est désormais en mode **PUBLIC**. Tous les Shinobis peuvent invoquer les pouvoirs de l'Otsutsuki-MD. ✅" 
+            });
+        } 
+        else if (targetMode === 'self' || targetMode === 'privé') {
+            config.MODE = 'self';
+            await sock.sendMessage(from, { 
+                text: "🔐 *DIMENSION SCELLÉE*\n\nLe système est désormais en mode **PRIVÉ**. L'Otsutsuki-MD ne répondra qu'à son Maître unique. 🌑" 
+            });
+        }
+
+        // Note : Pour que le changement soit définitif même après un reboot sur Koyeb,
+        // il faudrait modifier les variables d'environnement sur Koyeb directement.
+        // Ce code change le mode pour la session actuelle.
+
+    } catch (e) {
+        console.error("Erreur Mode :", e);
+        await sock.sendMessage(m.key.remoteJid, { text: "⚠️ Erreur lors de la transition dimensionnelle." });
     }
 };
