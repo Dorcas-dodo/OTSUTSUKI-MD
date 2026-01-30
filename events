@@ -1,1 +1,26 @@
+const config = require('../config');
 
+module.exports = async (sock, anu) => {
+    try {
+        const { id, participants, action } = anu;
+        
+        for (let num of participants) {
+            // Message de Bienvenue
+            if (action === 'add' && config.WELCOME === 'true') {
+                await sock.sendMessage(id, {
+                    text: `⛩️ *BIENVENUE CHEZ LES OTSUTSUKI* ⛩️\n\n🏮 @${num.split("@")[0]}, ton chakra a été détecté dans cette dimension.\n\n_Prépare-toi à l'ascension._`,
+                    mentions: [num]
+                });
+            } 
+            // Message de Départ
+            else if (action === 'remove' && config.GOODBYE === 'true') {
+                await sock.sendMessage(id, {
+                    text: `🌀 *EXIL* : Le Shinobi @${num.split("@")[0]} a quitté le clan. Son nom est effacé des archives.`,
+                    mentions: [num]
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Erreur Event :", e);
+    }
+};
