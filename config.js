@@ -1,25 +1,29 @@
 module.exports = {
-    // 🔗 Paramètres de base
+    // 🔗 Connexion & Sécurité
     SESSION_ID: process.env.SESSION_ID || "", 
     PREFIXE: process.env.PREFIXE || ".",
-    OWNER_NAME: process.env.NOM_OWNER || "Indra Otsutsuki",
-    OWNER_NUMBER: process.env.NUMERO_OWNER || "242066969267",
+    OWNER_NAME: process.env.OWNER_NAME || "Indra Otsutsuki",
+    OWNER_NUMBER: process.env.OWNER_NUMBER || "242066969267",
 
     // ⚙️ Paramètres de fonctionnement
-    MODE: process.env.MODE || "private", // 'public' ou 'self'
-    WELCOME: process.env.WELCOME || "true", 
-    GOODBYE: process.env.GOODBYE || "true", 
-    ANTILINK: process.env.ANTILINK || "true", 
+    // 'public' : tout le monde peut utiliser le bot
+    // 'private' ou 'self' : seul l'owner peut l'utiliser
+    MODE: process.env.MODE || "public", 
+    
+    // 🛡️ Protections & Automatisations
+    WELCOME: process.env.WELCOME === "true", // Conversion en booléen
+    GOODBYE: process.env.GOODBYE === "true", 
+    ANTILINK: process.env.ANTILINK === "true",
+    AUTO_READ_STATUS: process.env.AUTO_READ_STATUS === "true", // Moderne
+    
+    // 💾 Base de Données
+    DATABASE_URL: process.env.DATABASE_URL || "votre_lien_mongodb_ici",
     
     // 🎨 Identité & Médias
-    BOT_NAME: "OTSUTSUKI-MD",
-    
-    // Optimisation : Utilisation du fichier local pour plus de rapidité sur Koyeb
-    MENU_IMG: "./media/menu.jpg", 
-    
-    // Lien de secours (si le fichier local échoue)
-    URL_RECURS: "https://files.catbox.moe/dyox3v.jpg" 
+    BOT_NAME: process.env.BOT_NAME || "OTSUTSUKI-MD",
+    MENU_IMG: process.env.MENU_IMG || "./media/menu.jpg",
+    URL_RECURS: "https://files.catbox.moe/dyox3v.jpg",
+
+    // 🕒 Autres réglages
+    TIMEZONE: process.env.TIMEZONE || "Africa/Brazzaville"
 };
-
-
-
