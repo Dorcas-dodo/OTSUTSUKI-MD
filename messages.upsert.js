@@ -18,15 +18,12 @@ module.exports = async (sock, chatUpdate) => {
         const sender = m.key.participant || m.key.remoteJid;
 
         // --- 🔎 RECONNAISSANCE MAÎTRE ULTRA-FLEXIBLE ---
-        // On nettoie l'expéditeur (enlève les lettres/symboles)
         const cleanSender = sender.split('@')[0].replace(/[^0-9]/g, '');
         
-        // Tes numéros de confiance (Congo, Côte d'Ivoire, et Config)
         const master1 = '242066969267';
         const master2 = '225232933638352'; // Détecté dans tes logs !
         const cleanOwner = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : master1;
         
-        // Utilisation de .includes() pour bypasser les identifiants d'appareil (:4, :12, etc.)
         const isOwner = m.key.fromMe || 
                         cleanSender.includes(master1) || 
                         cleanSender.includes(master2) || 
@@ -40,13 +37,14 @@ module.exports = async (sock, chatUpdate) => {
         }
 
         // --- 1. SYSTÈME ANTILINK ---
-        if (isGroup && config.ANTILINK) {
+        if (isGroup && config.ANTILINK === "true") {
             const linkPattern = /https?:\/\/\S+|chat\.whatsapp\.com\/\S+/i;
             if (linkPattern.test(text)) {
                 const groupMetadata = await sock.groupMetadata(from);
                 const participants = groupMetadata.participants;
                 const isAdmin = participants.find(p => p.id === sender)?.admin;
-                const isBotAdmin = participants.find(p => p.id === (sock.user.id.split(':')[0] + '@s.whatsapp.net'))?.admin;
+                const botId = (sock.user.id.split(':')[0] + '@s.whatsapp.net');
+                const isBotAdmin = participants.find(p => p.id === botId)?.admin;
 
                 if (!isAdmin && isBotAdmin) {
                     await sock.sendMessage(from, { delete: m.key });
@@ -63,4 +61,35 @@ module.exports = async (sock, chatUpdate) => {
         const prefix = config.PREFIXE || ".";
         if (!text.startsWith(prefix)) return;
 
-        const args = text.slice(prefix.length).trim().split(/
+        // ✅ Correction de la ligne qui causait l'erreur
+        const args = text.slice(prefix.length).trim().split(/ +/);
+        const cmdName = args.shift().toLowerCase();
+        const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
+
+        if (fs.existsSync(commandPath)) {
+            await sock.sendMessage(from, { react: { text: "🌀", key: m.key } });
+
+            console.log(`✨ Activation : ${cmdName} par ${cleanSender} | Master: ${isOwner}`);
+            
+            delete require.cache[require.resolve(commandPath)];
+            const command = require(commandPath);
+            
+            try {
+                // Transmission du passe-droit { isOwner }
+                if (typeof command === 'function') {
+                    await command(sock, m, args, { isOwner });
+                } else if (command.execute) {
+                    await command.execute(sock, m, args, { isOwner });
+                }
+
+                await sock.sendMessage(from, { react: { text: "", key: m.key } });
+
+            } catch (cmdErr) {
+                console.error(cmdErr);
+                await sock.sendMessage(from, { react: { text: "❌", key: m.key } });
+            }
+        }
+    } catch (err) {
+        console.error("⚠️ Erreur Handler :", err);
+    }
+};
