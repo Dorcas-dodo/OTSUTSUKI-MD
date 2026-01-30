@@ -1,4 +1,4 @@
-const smsg = require('./Handler/smsg'); // Importation du nouveau nettoyeur
+const smsg = require('./Handler/smsg');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
@@ -9,20 +9,38 @@ module.exports = async (sock, chatUpdate) => {
         if (!m.message) return;
 
         // --- ⚡ MODERNISATION DU MESSAGE ---
-        // Cette ligne remplace tout ton ancien code de vérification admin
         m = await smsg(sock, m);
 
         const prefix = config.PREFIXE || ".";
-        
-        // Reconnaissance Owner (Maître)
         const isOwner = m.fromMe || 
                         m.senderNumber === '242066969267' || 
                         m.senderNumber === '225232933638352' || 
                         m.senderNumber === config.OWNER_NUMBER?.replace(/[^0-9]/g, '');
 
-        // --- 🔓 LOGIQUE DE MODE (SELF/PUBLIC) ---
-        // Le bot répond si : c'est l'owner OU si c'est un admin du groupe (même en mode self)
-        if (config.MODE === 'self' && !isOwner && !m.isSenderAdmin) return;
+        // --- 👁️ AUTO-READ STATUS (MODERNE) ---
+        if (m.key.remoteJid === 'status@broadcast' && config.AUTO_READ_STATUS) {
+            await sock.readMessages([m.key]);
+            console.log(`🌀 Statut vu de : ${m.pushName || m.senderNumber}`);
+        }
+
+        // --- 🛡️ SYSTÈME ANTI-LINK ---
+        if (m.isGroup && config.ANTILINK && !isOwner && !m.isSenderAdmin) {
+            const linkRegex = /chat.whatsapp.com\/([0-9A-Za-z]{20,24})/i;
+            if (linkRegex.test(m.body)) {
+                await sock.sendMessage(m.chat, { delete: m.key }); // Supprime le lien
+                if (m.isBotAdmin) {
+                    await sock.groupParticipantsUpdate(m.chat, [m.sender], "remove"); // Exile l'intrus
+                    await m.reply("🚫 *Lien interdit !* Le contrevenant a été banni par le sceau Otsutsuki.");
+                } else {
+                    await m.reply("⚠️ *Lien détecté !* Je ne suis pas admin pour bannir l'intrus.");
+                }
+                return; // Stop l'exécution
+            }
+        }
+
+        // --- 🔓 LOGIQUE DE MODE (PUBLIC/PRIVATE/SELF) ---
+        // Si le mode est 'private' ou 'self', on ne répond qu'à l'owner
+        if ((config.MODE === 'self' || config.MODE === 'private') && !isOwner) return;
 
         // --- 🎯 TRAITEMENT DES COMMANDES ---
         if (!m.body.startsWith(prefix)) return;
@@ -32,16 +50,21 @@ module.exports = async (sock, chatUpdate) => {
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
-            // Réaction visuelle (optionnel)
+            // Réaction "Processing"
             await sock.sendMessage(m.chat, { react: { text: "🌀", key: m.key } });
+
+            // Gestion de l'Auto-Typing
+            if (config.AUTO_TYPING) {
+                await sock.sendPresenceUpdate('composing', m.chat);
+            }
 
             delete require.cache[require.resolve(commandPath)];
             const command = require(commandPath);
             
             try {
-                // On envoie 'm' qui contient déjà m.isBotAdmin et m.isSenderAdmin
-                await command(sock, m, args, { isOwner });
+                await command(sock, m, args, { isOwner, prefix, config });
                 
+                // Réaction "Succès"
                 await sock.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
             } catch (cmdErr) {
                 console.error(cmdErr);
