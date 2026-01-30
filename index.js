@@ -41,11 +41,9 @@ async function startBot(userId = "main_admin") {
         },
         printQRInTerminal: userId === "main_admin",
         logger: pino({ level: "fatal" }),
-        // Correction navigateur pour validation Pairing Code
         browser: ["Ubuntu", "Chrome", "20.0.0"], 
         syncFullHistory: false,
         markOnlineOnConnect: true,
-        // --- PARAMÈTRES DE STABILITÉ AJOUTÉS ---
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 0,
         keepAliveIntervalMs: 10000
@@ -62,9 +60,19 @@ async function startBot(userId = "main_admin") {
         if (connection === 'open') {
             currentQRs[userId] = "connected";
             console.log(`🏮 OTSUTSUKI [${userId}] : Système en ligne !`);
+            
             const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+            
+            // --- MESSAGE D'ACCUEIL ÉPIQUE ---
             await sock.sendMessage(userJid, { 
-                text: `✨ *⛩️ OTSUTSUKI-MD : ÉVEIL RÉUSSI* ⛩️\n\n👤 ID : ${userId}\n✅ Session sécurisée sur MongoDB Atlas.`
+                image: { url: "https://wallpapercave.com/wp/wp9113171.jpg" },
+                caption: `✨ *⛩️ OTSUTSUKI-MD : L'ÉVEIL DU RINNEGAN* ⛩️\n\n` +
+                         `🚀 *Félicitations Shinobi !*\n` +
+                         `L'identité *${userId}* est désormais liée au flux divin.\n\n` +
+                         `🔹 *Statut :* Maître du Système\n` +
+                         `🔹 *Base de données :* Scellée (MongoDB)\n` +
+                         `🔹 *Hébergement :* Koyeb Cloud\n\n` +
+                         `_Utilise .menu pour déployer ta puissance._`
             });
         }
 
@@ -90,7 +98,7 @@ async function startBot(userId = "main_admin") {
     return sock;
 }
 
-// --- INTERFACE WEB (SANS CHANGEMENT) ---
+// --- INTERFACE WEB ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -147,7 +155,7 @@ app.get('/connect/:id', (req, res) => {
         </head>
         <body class="flex items-center justify-center min-h-screen p-4">
             <div class="glass p-8 rounded-3xl w-full max-w-lg text-center">
-                <h1 class="text-2xl font-bold font-['Orbitron'] mb-6 text-purple-500 italic italic">SESSION : ${userId}</h1>
+                <h1 class="text-2xl font-bold font-['Orbitron'] mb-6 text-purple-500 italic">SESSION : ${userId}</h1>
                 <div class="mb-8">
                     <p class="text-xs uppercase text-gray-500 mb-3 tracking-widest">Option 1 : Sceau Visuel (QR)</p>
                     <div id="qr-box" class="bg-white p-2 rounded-lg inline-block mx-auto">
@@ -158,70 +166,4 @@ app.get('/connect/:id', (req, res) => {
                 <div class="mb-4">
                     <p class="text-xs uppercase text-gray-500 mb-3 tracking-widest">Option 2 : Code Ninja (Couplage)</p>
                     <input type="text" id="phone" placeholder="Ex: 242068079834" class="w-full bg-black/50 border border-gray-700 p-3 rounded-lg mb-4 text-center focus:border-purple-500 outline-none text-white">
-                    <button onclick="getPairingCode()" id="pair-btn" class="bg-purple-600 hover:bg-purple-700 w-full py-3 rounded-lg font-bold transition">Générer le Code</button>
-                    <div id="pair-display" class="mt-4 text-3xl font-bold text-cyan-400 tracking-[0.3em] hidden"></div>
-                </div>
-                <a href="/" class="block mt-6 text-purple-500 text-xs">← Retour à l'accueil</a>
-            </div>
-            <script>
-                async function updateQR() {
-                    try {
-                        const res = await fetch('/get-qr/${userId}');
-                        const data = await res.json();
-                        const box = document.getElementById('qr-box');
-                        if (data.qr === "connected") {
-                            box.innerHTML = '<div class="p-8 text-green-600 font-bold italic">SYSTÈME ACTIF ✅</div>';
-                            document.getElementById('pair-btn').style.display = 'none';
-                        } else if (data.qr) {
-                            box.innerHTML = '<img src="' + data.qr + '" class="w-48 h-48">';
-                        }
-                    } catch (e) {}
-                }
-                setInterval(updateQR, 5000);
-
-                async function getPairingCode() {
-                    const phone = document.getElementById('phone').value.replace(/[^0-9]/g, '');
-                    const btn = document.getElementById('pair-btn');
-                    const display = document.getElementById('pair-display');
-                    if (!phone) return alert("Entrez votre numéro complet !");
-                    btn.innerText = "Incantation...";
-                    btn.disabled = true;
-                    try {
-                        const res = await fetch('/get-pair/${userId}?phone=' + phone);
-                        const data = await res.json();
-                        if (data.code) {
-                            display.innerText = data.code;
-                            display.classList.remove('hidden');
-                            btn.innerText = "Code Obtenu";
-                        } else {
-                            alert("WhatsApp refuse la liaison. Vérifiez MongoDB ou l'IP.");
-                            btn.disabled = false;
-                        }
-                    } catch (e) { alert("Serveur injoignable"); btn.disabled = false; }
-                }
-            </script>
-        </body>
-        </html>
-    `);
-});
-
-// --- ROUTES API ---
-app.get('/get-qr/:id', (req, res) => {
-    res.json({ qr: currentQRs[req.params.id] || null });
-});
-
-app.get('/get-pair/:id', async (req, res) => {
-    const userId = req.params.id;
-    const phone = req.query.phone;
-    const sock = activeSocks[userId];
-    if (!sock) return res.json({ error: "Instance non trouvée" });
-
-    try {
-        const code = await sock.requestPairingCode(phone);
-        res.json({ code });
-    } catch (err) { res.json({ error: "Échec technique" }); }
-});
-
-app.listen(PORT, () => {
-    console.log("🌐 Serveur OTSUTSUKI-MD actif sur port " + PORT);
-});
+                    <button onclick="
