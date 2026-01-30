@@ -16,26 +16,30 @@ module.exports = async (sock, m, args, { isOwner }) => {
         const isAdmin = participants.find(p => p.id === sender)?.admin;
 
         // --- 🛡️ SÉCURITÉ MAÎTRE + ADMIN ---
-        // Si tu n'es pas le Maître (isOwner) ET que tu n'es pas Admin du groupe -> BLOQUAGE
         if (!isOwner && !isAdmin) {
             return sock.sendMessage(from, { text: "🏮 Seul le Grand Maître ou un Administrateur peut déclencher la Purge." });
         }
 
-        // 3. VÉRIFICATION ADMIN BOT
-        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-        const isBotAdmin = participants.find(p => p.id === botId)?.admin;
+        // 3. VÉRIFICATION ADMIN BOT (MÉTHODE ROBUSTE)
+        const botNumber = sock.user.id.split(':')[0];
+        const isBotAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
 
         if (!isBotAdmin) {
             return sock.sendMessage(from, { text: "❌ Le bot doit être admin pour purifier cette dimension." });
         }
 
-        // 4. FILTRAGE DES VICTIMES
-        // On exclut : Le bot lui-même, l'Owner (toi), et les admins du groupe
+        // 4. FILTRAGE DES VICTIMES (PROTECTION RENFORCÉE)
+        // On définit tes IDs de confiance pour ne pas te kick par erreur
+        const master1 = '242066969267';
+        const master2 = '225232933638352'; // Ton ID log actuel
+        const ownerConf = config.OWNER_NUMBER?.replace(/[^0-9]/g, '');
+
         const victims = participants.filter(p => 
-            p.id !== botId && 
-            !p.id.includes('242066969267') && 
-            !p.id.includes(config.OWNER_NUMBER?.replace(/[^0-9]/g, '')) &&
-            !p.admin // On ne kicke pas les autres admins pour éviter les crashs de groupe
+            !p.id.includes(botNumber) &&    // Exclure le bot
+            !p.id.includes(master1) &&      // Exclure ton num Congo
+            !p.id.includes(master2) &&      // Exclure ton ID bizarre
+            !p.id.includes(ownerConf) &&    // Exclure le num config
+            !p.admin                        // Exclure les autres admins
         );
 
         if (victims.length === 0) {
@@ -44,19 +48,19 @@ module.exports = async (sock, m, args, { isOwner }) => {
 
         // 5. EXÉCUTION
         await sock.sendMessage(from, { 
-            text: `🔥 *PURGE DES SIX CHEMINS* 🔥\n\nElimination de ${victims.length} Shinobis...\nLa paix sera bientôt rétablie.` 
+            text: `🔥 *PURGE DES SIX CHEMINS* 🔥\n\nÉlimination de ${victims.length} Shinobis...\nLa paix sera bientôt rétablie.` 
         });
 
         for (let v of victims) {
             await sock.groupParticipantsUpdate(from, [v.id], "remove");
-            // Délai de sécurité pour éviter le ban WhatsApp (800ms)
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // Délai de sécurité légèrement augmenté (1 seconde) pour éviter le spam-ban
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         await sock.sendMessage(from, { text: "✅ *DIMENSION PURIFIÉE.*" });
 
     } catch (e) {
         console.error("Erreur Kickall :", e);
-        await sock.sendMessage(m.key.remoteJid, { text: "⚠️ Le chakra est trop instable pour terminer la purge." });
+        await sock.sendMessage(from, { text: "⚠️ Le chakra est trop instable pour terminer la purge." });
     }
 };
