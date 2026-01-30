@@ -14,17 +14,20 @@ module.exports = async (sock, m, args, { isOwner }) => {
             return sock.sendMessage(from, { text: "🏮 Cette technique ne peut être utilisée que dans un groupe." });
         }
 
-        // 3. VÉRIFICATION ADMIN BOT
+        // 3. VÉRIFICATION ADMIN BOT (VERSION ROBUSTE)
         const groupMetadata = await sock.groupMetadata(from);
         const participants = groupMetadata.participants;
-        const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-        const isBotAdmin = participants.find(p => p.id === botId)?.admin;
+        
+        // Extraction propre de l'ID numérique du bot
+        const botNumber = sock.user.id.split(':')[0];
+        // On cherche si un participant admin contient ce numéro
+        const isBotAdmin = participants.find(p => p.id.includes(botNumber))?.admin;
 
         if (!isBotAdmin) {
             return sock.sendMessage(from, { text: "❌ Erreur : Je dois être admin du groupe pour exiler quelqu'un." });
         }
 
-        // 4. RÉCUPÉRATION DE LA CIBLE (Mention, Réponse ou Argument)
+        // 4. RÉCUPÉRATION DE LA CIBLE
         let users = m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
                     m.message?.extendedTextMessage?.contextInfo?.participant || 
                     (args[0] ? args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null);
@@ -33,8 +36,8 @@ module.exports = async (sock, m, args, { isOwner }) => {
             return sock.sendMessage(from, { text: "🏮 Mentionnez ou répondez au Shinobi à bannir." });
         }
 
-        // Empêcher le bot de se kick lui-même
-        if (users === botId) {
+        // Empêcher le bot de se kick lui-même (en vérifiant le numéro)
+        if (users.includes(botNumber)) {
             return sock.sendMessage(from, { text: "🌀 Je ne peux pas m'exiler moi-même de cette dimension." });
         }
 
@@ -48,6 +51,6 @@ module.exports = async (sock, m, args, { isOwner }) => {
 
     } catch (e) {
         console.error("Erreur Kick :", e);
-        await sock.sendMessage(m.key.remoteJid, { text: "⚠️ Le chakra est instable. Impossible d'exiler cette cible." });
+        await sock.sendMessage(from, { text: "⚠️ Le chakra est instable. Impossible d'exiler cette cible." });
     }
 };
