@@ -114,9 +114,11 @@ async function startBot() {
         },
         printQRInTerminal: true,
         logger: pino({ level: "fatal" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // MISE À JOUR : On utilise Safari/MacOS pour éviter le blocage WhatsApp
+        browser: ["Otsutsuki-MD", "Safari", "1.0.0"], 
         syncFullHistory: false,
-        markOnlineOnConnect: true
+        markOnlineOnConnect: true,
+        defaultQueryTimeoutMs: undefined
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -168,22 +170,4 @@ async function startBot() {
 }
 
 // --- ROUTES API ---
-app.get('/get-qr', (req, res) => res.json({ qr: currentQR === "connected" ? null : currentQR, connected: currentQR === "connected" }));
-
-app.get('/pair', async (req, res) => {
-    let phone = req.query.phone;
-    if (!phone || !sock) return res.json({ error: "Socket non prête" });
-    setTimeout(async () => {
-        try {
-            const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
-            res.json({ code });
-        } catch (err) {
-            res.json({ error: "Échec de la demande" });
-        }
-    }, 6000);
-});
-
-app.listen(PORT, () => {
-    console.log("🌐 Serveur OTSUTSUKI sur port " + PORT);
-    startBot();
-});
+app.get('/get-qr', (
