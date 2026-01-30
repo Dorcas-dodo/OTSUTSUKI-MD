@@ -1,20 +1,12 @@
-FROM node:20
-
-# Installation des outils système pour le traitement média
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    imagemagick \
-    webp \
-    && apt-get clean
-
-WORKDIR /usr/src/app
-
-# Copie et installation des dépendances
-COPY package.json ./
-RUN npm install
-
-# Copie du reste du code source
-COPY . .
-
-# Lancement du bot
-CMD ["node", "index.js"]
+module.exports = async (sock, m) => {
+    const start = Date.now();
+    await m.reply('🚀 *Analyse du Chakra...*');
+    const end = Date.now();
+    
+    const latence = end - start;
+    
+    await sock.sendMessage(m.chat, { 
+        text: `🏮 *𝖮𝖳𝖲𝖴𝖳𝖲𝖴𝖪𝖨 𝖲𝖯𝖤𝖤𝖣* : ${latence}𝗆𝗌`,
+        edit: m.key // Si ton bot supporte l'édition, sinon laisse le reply classique
+    });
+};
