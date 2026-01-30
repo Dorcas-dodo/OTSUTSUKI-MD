@@ -9,6 +9,8 @@ const {
 const pino = require("pino");
 const QRCode = require('qrcode');
 const messageHandler = require('./messages.upsert');
+// --- AJOUT : IMPORT DU GESTIONNAIRE D'ÉVÉNEMENTS DE GROUPE ---
+const groupUpdateHandler = require('./events/group-participants.update'); 
 const config = require('./config');
 const fs = require('fs');
 
@@ -115,7 +117,7 @@ async function startBot() {
         },
         printQRInTerminal: true,
         logger: pino({ level: "fatal" }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"], // Version Chrome standard pour éviter les rejets
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
         syncFullHistory: false,
         markOnlineOnConnect: true
     });
@@ -161,50 +163,3 @@ async function startBot() {
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
-            console.log("Connexion fermée. Raison :", reason);
-            if (reason !== DisconnectReason.loggedOut) {
-                startBot();
-            } else {
-                console.log("Session déconnectée. Supprimez le dossier 'session' et relancez.");
-            }
-        }
-    });
-
-    sock.ev.on('messages.upsert', async (chatUpdate) => {
-        await messageHandler(sock, chatUpdate);
-    });
-}
-
-// --- ROUTES API ---
-app.get('/get-qr', (req, res) => res.json({ 
-    qr: currentQR === "connected" ? null : currentQR, 
-    connected: currentQR === "connected" 
-}));
-
-app.get('/pair', async (req, res) => {
-    let phone = req.query.phone;
-    if (!phone) return res.json({ error: "Numéro manquant" });
-    
-    try {
-        if (!sock) return res.json({ error: "Socket non prête" });
-        
-        // Attente de 6 secondes pour stabiliser la connexion avant demande
-        setTimeout(async () => {
-            try {
-                const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
-                res.json({ code });
-            } catch (err) {
-                console.error(err);
-                res.json({ error: "Échec de la demande" });
-            }
-        }, 6000);
-
-    } catch (err) {
-        res.json({ error: "Erreur serveur" });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log("🌐 Serveur OTSUTSUKI sur port " + PORT);
-    startBot();
-});
