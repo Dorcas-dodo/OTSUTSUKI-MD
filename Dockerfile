@@ -1,23 +1,50 @@
-# On utilise une image Node.js stable
-FROM node:20
+const os = require('os');
+const moment = require('moment-timezone');
+const config = require('../config');
 
-# Installation des outils nécessaires pour WhatsApp (images/vidéos)
-RUN apt-get update && apt-get install -y ffmpeg webp && apt-get clean
+module.exports = async (sock, m, args) => {
+    const time = moment.tz(config.TIMEZONE).format('HH:mm:ss');
+    const date = moment.tz(config.TIMEZONE).format('DD/MM/YYYY');
+    
+    // Calcul de l'uptime (temps de fonctionnement)
+    const uptime = process.uptime();
+    const hours = Math.floor(uptime / 3600);
+    const minutes = Math.floor((uptime % 3600) / 60);
+    const seconds = Math.floor(uptime % 60);
 
-# Dossier de travail
-WORKDIR /app
+    const menuText = `
+⛩️ *OTSUTSUKI-MD* ⛩️
 
-# Copie des fichiers de configuration
-COPY package*.json ./
+*👤 Utilisateur :* @${m.senderNumber}
+*📅 Date :* ${date}
+*🕒 Heure :* ${time}
+*⌛ En ligne :* ${hours}h ${minutes}m ${seconds}s
+*🛠️ Préfixe :* [ ${config.PREFIXE} ]
+*🌌 Mode :* ${config.MODE}
 
-# Installation propre
-RUN npm install
+--- *📜 LISTE DES TECHNIQUES* ---
 
-# Copie de tout le reste
-COPY . .
+*💠 COMMANDES ADMIN*
+> 🌀 ${config.PREFIXE}kick - Exiler un membre
+> 🌀 ${config.PREFIXE}promote - Nommer un admin
+> 🌀 ${config.PREFIXE}demote - Destituer un admin
+> 🌀 ${config.PREFIXE}tagall - Appel du clan
 
-# Exposition du port
-EXPOSE 8000
+*💠 COMMANDES GÉNÉRALES*
+> 🌀 ${config.PREFIXE}menu - Afficher ce parchemin
+> 🌀 ${config.PREFIXE}ping - Vitesse du bot
+> 🌀 ${config.PREFIXE}owner - Contacter le créateur
 
-# CHANGEMENT ICI : On lance index.js qui gère à la fois le bot et le serveur web
-CMD ["node", "index.js"]
+*💠 PROTECTION*
+> 🌀 Anti-Link : ${config.ANTILINK ? '✅ Actif' : '❌ Inactif'}
+
+-----------------------------
+*POWERED BY OTSUTSUKI-MD*
+    `.trim();
+
+    await sock.sendMessage(m.chat, {
+        image: { url: config.URL_RECURS }, // Utilise l'URL de secours définie dans ta config
+        caption: menuText,
+        mentions: [m.sender]
+    }, { quoted: m });
+};
