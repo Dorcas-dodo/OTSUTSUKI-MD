@@ -1,50 +1,19 @@
-module.exports = async (sock, m, args, { isOwner }) => {
-    const from = m.key.remoteJid;
+module.exports = async (sock, m, args, { isBotAdmin, isSenderAdmin, isOwner, from }) => {
+    // 1. Vérifications de sécurité
+    if (!m.isGroup) return m.reply("⛩️ Cette technique ne fonctionne que dans les groupes.");
+    if (!isBotAdmin) return m.reply("❌ Erreur : L'Otsutsuki-MD doit être administrateur pour exiler quelqu'un.");
+    if (!isSenderAdmin && !isOwner) return m.reply("❌ Seul un haut gradé du clan peut utiliser cette technique.");
+
+    // 2. Récupération de la cible (mention ou réponse)
+    let victim = m.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
+                 m.message.extendedTextMessage?.contextInfo?.participant;
+
+    if (!victim) return m.reply("🏮 Désigne le Shinobi à exiler en le mentionnant ou en répondant à son message.");
 
     try {
-        if (!from.endsWith('@g.us')) {
-            return sock.sendMessage(from, { text: "🏮 Cette technique ne peut être utilisée que dans un temple (groupe)." }, { quoted: m });
-        }
-
-        // --- FORCE REFRESH ET DÉTECTION ROBUSTE ---
-        const groupMetadata = await sock.groupMetadata(from);
-        const participants = groupMetadata.participants;
-        
-        // On nettoie l'ID du bot pour la comparaison
-        const botNumber = sock.user.id.split(':')[0];
-        const botInGroup = participants.find(p => p.id.includes(botNumber));
-        const isBotAdmin = !!(botInGroup?.admin || botInGroup?.isSuperAdmin);
-
-        // DEBUG DANS TA CONSOLE
-        console.log(`🔍 [VÉRIFICATION] Bot: ${botNumber} | Admin détecté: ${isBotAdmin}`);
-
-        if (!isBotAdmin) {
-            return sock.sendMessage(from, { text: "❌ Erreur : L'Otsutsuki-MD doit être administrateur pour exiler quelqu'un." }, { quoted: m });
-        }
-
-        if (!isOwner) {
-            return sock.sendMessage(from, { text: "🏮 Seul le Maître peut utiliser l'Exil." }, { quoted: m });
-        }
-
-        // --- RÉCUPÉRATION DE LA CIBLE ---
-        let target = m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
-                     m.message?.extendedTextMessage?.contextInfo?.participant || 
-                     (args[0] ? args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null);
-
-        if (!target || target === from) {
-            return sock.sendMessage(from, { text: "🏮 Mentionnez ou répondez au message du Shinobi à bannir." }, { quoted: m });
-        }
-
-        // --- EXÉCUTION ---
-        await sock.groupParticipantsUpdate(from, [target], "remove");
-        
-        await sock.sendMessage(from, { 
-            text: `🌀 *EXIL RÉUSSI* : Le Shinobi @${target.split('@')[0]} a été envoyé dans une autre dimension.`, 
-            mentions: [target] 
-        }, { quoted: m });
-
-    } catch (e) {
-        console.error("Erreur technique kick:", e);
-        await sock.sendMessage(from, { text: "⚠️ Le chakra est instable. Impossible d'exiler cette cible." }, { quoted: m });
+        await sock.groupParticipantsUpdate(from, [victim], "remove");
+        await m.reply("🌀 *EXIL ACCOMPLI !* Le chakra de l'individu a été banni de cette dimension.");
+    } catch (err) {
+        m.reply("⚠️ Échec de l'exil. L'individu est peut-être trop puissant (Admin).");
     }
 };
