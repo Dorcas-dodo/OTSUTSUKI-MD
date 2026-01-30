@@ -9,7 +9,6 @@ const {
 const pino = require("pino");
 const QRCode = require('qrcode');
 const messageHandler = require('./messages.upsert');
-// --- AJOUT : IMPORT DU GESTIONNAIRE D'ÉVÉNEMENTS DE GROUPE ---
 const groupUpdateHandler = require('./events/group-participants.update'); 
 const config = require('./config');
 const fs = require('fs');
@@ -76,10 +75,8 @@ app.get('/', (req, res) => {
                     const btn = document.getElementById('btn-pair');
                     const phone = phoneInput.value.replace(/[^0-9]/g, '');
                     if (!phone) return alert("Numéro requis");
-                    
                     btn.innerText = "Génération...";
                     btn.disabled = true;
-
                     try {
                         const res = await fetch('/pair?phone=' + phone);
                         const data = await res.json();
@@ -126,27 +123,16 @@ async function startBot() {
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, qr, lastDisconnect } = update;
-        
         if (qr) currentQR = await QRCode.toDataURL(qr);
 
         if (connection === 'open') {
             currentQR = "connected";
             console.log("🏮 OTSUTSUKI-MD : Éveil du système réussi !");
-
             const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-            const userName = sock.user.name || "Shinobi";
+            const notifyMsg = `✨ *✧━━『 ⛩️ OTSUTSUKI-MD ⛩️ 』━━✧* ✨\n\n💠 *S Y S T È M E  É V E I L L É*\n👤 *HÔTE :* \`\`\`${sock.user.name}\`\`\`\n📱 *LIGNÉE :* @${userJid.split('@')[0]}\n*© 2026 OTSUTSUKI LEGACY*`;
             
-            const notifyMsg = `✨ *✧━━『 ⛩️ OTSUTSUKI-MD ⛩️ 』━━✧* ✨\n\n` +
-                              `  💠 *S Y S T È M E  É V E I L L É*\n\n` +
-                              `👤 *HÔTE :* \`\`\`${userName}\`\`\`\n` +
-                              `📱 *LIGNÉE :* @${userJid.split('@')[0]}\n` +
-                              `🧬 *STATUT :* Synchronisation 100%\n` +
-                              `🌐 *RÉGION :* Brazzaville, CG\n\n` +
-                              `👁️‍🗨️ _"L'œil céleste s'est ouvert. Votre chakra est désormais lié au clan Otsutsuki. Le monde est sous votre contrôle."_\n\n` +
-                              `*© 2026 OTSUTSUKI LEGACY*`;
-
             await sock.sendMessage(userJid, { 
-                text: notifyMsg, 
+                text: notifyMsg,
                 mentions: [userJid],
                 contextInfo: {
                     externalAdReply: {
@@ -163,3 +149,41 @@ async function startBot() {
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
+            console.log("Connexion fermée. Raison :", reason);
+            if (reason !== DisconnectReason.loggedOut) {
+                startBot();
+            } else {
+                console.log("Session déconnectée. Supprimez le dossier 'session' et relancez.");
+            }
+        }
+    });
+
+    sock.ev.on('messages.upsert', async (chatUpdate) => {
+        await messageHandler(sock, chatUpdate);
+    });
+
+    sock.ev.on('group-participants.update', async (anu) => {
+        await groupUpdateHandler(sock, anu);
+    });
+}
+
+// --- ROUTES API ---
+app.get('/get-qr', (req, res) => res.json({ qr: currentQR === "connected" ? null : currentQR, connected: currentQR === "connected" }));
+
+app.get('/pair', async (req, res) => {
+    let phone = req.query.phone;
+    if (!phone || !sock) return res.json({ error: "Socket non prête" });
+    setTimeout(async () => {
+        try {
+            const code = await sock.requestPairingCode(phone.replace(/[^0-9]/g, ''));
+            res.json({ code });
+        } catch (err) {
+            res.json({ error: "Échec de la demande" });
+        }
+    }, 6000);
+});
+
+app.listen(PORT, () => {
+    console.log("🌐 Serveur OTSUTSUKI sur port " + PORT);
+    startBot();
+});
