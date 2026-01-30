@@ -60,10 +60,8 @@ async function startBot(userId = "main_admin") {
         if (connection === 'open') {
             currentQRs[userId] = "connected";
             console.log(`🏮 OTSUTSUKI [${userId}] : Système en ligne !`);
-            
             const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
             
-            // --- MESSAGE D'ACCUEIL ÉPIQUE ---
             await sock.sendMessage(userJid, { 
                 image: { url: "https://wallpapercave.com/wp/wp9113171.jpg" },
                 caption: `✨ *⛩️ OTSUTSUKI-MD : L'ÉVEIL DU RINNEGAN* ⛩️\n\n` +
@@ -166,4 +164,70 @@ app.get('/connect/:id', (req, res) => {
                 <div class="mb-4">
                     <p class="text-xs uppercase text-gray-500 mb-3 tracking-widest">Option 2 : Code Ninja (Couplage)</p>
                     <input type="text" id="phone" placeholder="Ex: 242068079834" class="w-full bg-black/50 border border-gray-700 p-3 rounded-lg mb-4 text-center focus:border-purple-500 outline-none text-white">
-                    <button onclick="
+                    <button onclick="getPairingCode()" id="pair-btn" class="bg-purple-600 hover:bg-purple-700 w-full py-3 rounded-lg font-bold transition">Générer le Code</button>
+                    <div id="pair-display" class="mt-4 text-3xl font-bold text-cyan-400 tracking-[0.3em] hidden"></div>
+                </div>
+                <a href="/" class="block mt-6 text-purple-500 text-xs">← Retour à l'accueil</a>
+            </div>
+            <script>
+                async function updateQR() {
+                    try {
+                        const res = await fetch('/get-qr/${userId}');
+                        const data = await res.json();
+                        const box = document.getElementById('qr-box');
+                        if (data.qr === "connected") {
+                            box.innerHTML = '<div class="p-8 text-green-600 font-bold italic">SYSTÈME ACTIF ✅</div>';
+                            document.getElementById('pair-btn').style.display = 'none';
+                        } else if (data.qr) {
+                            box.innerHTML = '<img src="' + data.qr + '" class="w-48 h-48">';
+                        }
+                    } catch (e) {}
+                }
+                setInterval(updateQR, 5000);
+
+                async function getPairingCode() {
+                    const phone = document.getElementById('phone').value.replace(/[^0-9]/g, '');
+                    const btn = document.getElementById('pair-btn');
+                    const display = document.getElementById('pair-display');
+                    if (!phone) return alert("Numéro requis !");
+                    btn.innerText = "Incantation...";
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch('/get-pair/${userId}?phone=' + phone);
+                        const data = await res.json();
+                        if (data.code) {
+                            display.innerText = data.code;
+                            display.classList.remove('hidden');
+                            btn.innerText = "Code Obtenu";
+                        } else {
+                            alert("Échec");
+                            btn.disabled = false;
+                        }
+                    } catch (e) { btn.disabled = false; }
+                }
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// --- ROUTES API ---
+app.get('/get-qr/:id', (req, res) => {
+    res.json({ qr: currentQRs[req.params.id] || null });
+});
+
+app.get('/get-pair/:id', async (req, res) => {
+    const userId = req.params.id;
+    const phone = req.query.phone;
+    const sock = activeSocks[userId];
+    if (!sock) return res.json({ error: "Instance non trouvée" });
+
+    try {
+        const code = await sock.requestPairingCode(phone);
+        res.json({ code });
+    } catch (err) { res.json({ error: "Échec technique" }); }
+});
+
+app.listen(PORT, () => {
+    console.log("🌐 Serveur OTSUTSUKI-MD actif sur port " + PORT);
+});
