@@ -1,60 +1,62 @@
 const config = require('../config');
 
 module.exports = async (sock, m, args, { isOwner }) => {
-    const from = m.key.remoteJid;
-
     try {
-        // 1. SÉCURITÉ MAÎTRE ABSOLUE
-        if (!isOwner) {
-            return sock.sendMessage(from, { text: "🏮 Seul le Grand Maître peut déclencher la Purge Totale." });
-        }
+        const from = m.key.remoteJid;
+        const sender = m.key.participant || m.key.remoteJid;
 
-        // 2. VÉRIFICATION GROUPE
+        // 1. VÉRIFICATION GROUPE
         if (!from.endsWith('@g.us')) {
-            return sock.sendMessage(from, { text: "Cette technique ne s'utilise que dans un temple (groupe)." });
+            return sock.sendMessage(from, { text: "🏮 Cette technique ne peut être invoquée que dans un temple (groupe)." });
         }
 
-        // 3. INFOS GROUPE & BOT
+        // 2. RÉCUPÉRATION DES DROITS
         const groupMetadata = await sock.groupMetadata(from);
         const participants = groupMetadata.participants;
+        const isAdmin = participants.find(p => p.id === sender)?.admin;
+
+        // --- 🛡️ SÉCURITÉ MAÎTRE + ADMIN ---
+        // Si tu n'es pas le Maître (isOwner) ET que tu n'es pas Admin du groupe -> BLOQUAGE
+        if (!isOwner && !isAdmin) {
+            return sock.sendMessage(from, { text: "🏮 Seul le Grand Maître ou un Administrateur peut déclencher la Purge." });
+        }
+
+        // 3. VÉRIFICATION ADMIN BOT
         const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
         const isBotAdmin = participants.find(p => p.id === botId)?.admin;
 
         if (!isBotAdmin) {
-            return sock.sendMessage(from, { text: "❌ Erreur : Je dois être admin pour exécuter la sentence divine." });
+            return sock.sendMessage(from, { text: "❌ Le bot doit être admin pour purifier cette dimension." });
         }
 
-        // 4. FILTRAGE DES CIBLES (On protège le bot et le maître 242066969267)
-        // On ne cible que ceux qui ne sont pas l'Owner et qui ne sont pas le bot
+        // 4. FILTRAGE DES VICTIMES
+        // On exclut : Le bot lui-même, l'Owner (toi), et les admins du groupe
         const victims = participants.filter(p => 
             p.id !== botId && 
             !p.id.includes('242066969267') && 
-            !p.id.includes(config.OWNER_NUMBER?.replace(/[^0-9]/g, ''))
+            !p.id.includes(config.OWNER_NUMBER?.replace(/[^0-9]/g, '')) &&
+            !p.admin // On ne kicke pas les autres admins pour éviter les crashs de groupe
         );
 
         if (victims.length === 0) {
-            return sock.sendMessage(from, { text: "🏮 Aucun Shinobi indésirable trouvé dans cette dimension." });
+            return sock.sendMessage(from, { text: "🏮 Aucun Shinobi de bas rang à purger." });
         }
 
+        // 5. EXÉCUTION
         await sock.sendMessage(from, { 
-            text: `🔥 *PURGE DES SIX CHEMINS EN COURS...*\n\nExécution de ${victims.length} Shinobis.\nLa paix revient dans 3, 2, 1...` 
+            text: `🔥 *PURGE DES SIX CHEMINS* 🔥\n\nElimination de ${victims.length} Shinobis...\nLa paix sera bientôt rétablie.` 
         });
 
-        // 5. EXÉCUTION EN BOUCLE AVEC DÉLAI (Sécurité Anti-Ban)
         for (let v of victims) {
-            try {
-                await sock.groupParticipantsUpdate(from, [v.id], "remove");
-                // Pause de 700ms entre chaque kick pour ne pas se faire bannir par WhatsApp
-                await new Promise(resolve => setTimeout(resolve, 700));
-            } catch (err) {
-                console.log(`Échec de l'exil pour : ${v.id}`);
-            }
+            await sock.groupParticipantsUpdate(from, [v.id], "remove");
+            // Délai de sécurité pour éviter le ban WhatsApp (800ms)
+            await new Promise(resolve => setTimeout(resolve, 800));
         }
 
-        await sock.sendMessage(from, { text: "✅ La dimension a été nettoyée. Le silence est d'or." });
+        await sock.sendMessage(from, { text: "✅ *DIMENSION PURIFIÉE.*" });
 
     } catch (e) {
         console.error("Erreur Kickall :", e);
-        sock.sendMessage(from, { text: "❌ La purge a été interrompue. Chakra instable." });
+        await sock.sendMessage(m.key.remoteJid, { text: "⚠️ Le chakra est trop instable pour terminer la purge." });
     }
 };
