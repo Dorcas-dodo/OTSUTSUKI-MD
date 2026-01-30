@@ -1,29 +1,20 @@
-{
-  "name": "celes",
-  "version": "1.0.0",
-  "description": "OTSUTSUKI-MD Bot WhatsApp Multi-Sessions",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
-  },
-  "dependencies": {
-    "@whiskeysockets/baileys": "6.6.0",
-    "axios": "^1.6.0",
-    "express": "^4.18.2",
-    "mongoose": "^8.0.0",
-    "pino": "^8.14.1",
-    "pino-pretty": "^10.0.0",
-    "qrcode": "^1.5.3",
-    "qrcode-terminal": "^0.12.0",
-    "dotenv": "^16.0.0",
-    "link-preview-js": "^3.0.0",
-    "fs-extra": "^11.2.0",
-    "fluent-ffmpeg": "^2.1.2",
-    "jimp": "^0.22.10",
-    "file-type": "^16.5.4"
-  },
-  "engines": {
-    "node": ">=20.x"
-  }
-}
+FROM node:20
+
+# Installation des outils système pour le traitement média
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    imagemagick \
+    webp \
+    && apt-get clean
+
+WORKDIR /usr/src/app
+
+# Copie et installation des dépendances
+COPY package.json ./
+RUN npm install
+
+# Copie du reste du code source
+COPY . .
+
+# Lancement du bot
+CMD ["node", "index.js"]
