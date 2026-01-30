@@ -7,6 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
+  "license": "MIT",
   "dependencies": {
     "@whiskeysockets/baileys": "6.6.0",
     "axios": "^1.7.0",
@@ -20,7 +21,7 @@
     "link-preview-js": "^3.0.0",
     "fs-extra": "^11.2.0",
     "fluent-ffmpeg": "^2.1.2",
-    "jimp": "^0.22.10",
+    "jimp": "^0.16.13",
     "file-type": "^16.5.4",
     "moment-timezone": "^0.5.45",
     "ytdl-core": "latest",
