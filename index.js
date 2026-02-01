@@ -18,7 +18,7 @@ const { get_session, restaureAuth } = require('./session');
 const app = express();
 const PORT = process.env.PORT || 8000; 
 
-// --- CONNEXION MONGODB ATLAS ---
+// --- CONNEXION MONGODB ---
 const mongoURI = process.env.MONGODB_URI;
 if (mongoURI) {
     mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -26,16 +26,15 @@ if (mongoURI) {
     .catch(err => console.error("❌ ERREUR MONGODB :", err.message));
 }
 
-// --- GESTION MULTI-SESSIONS ---
 let activeSocks = {};
 let currentQRs = {};
 
 async function startBot(userId = "main_admin") {
     const sessionDir = `./session_${userId}`;
 
-    // --- LOGIQUE DE RESTAURATION ---
+    // --- LOGIQUE DE RESTAURATION VIA SESSION_ID ---
     if (!fs.existsSync(sessionDir) && process.env.SESSION_ID && userId === "main_admin") {
-        console.log(`🛰️ OTSUTSUKI : Tentative de restauration via SESSION_ID...`);
+        console.log(`🛰️ OTSUTSUKI : Tentative de restauration de session...`);
         try {
             const sessionData = await get_session(process.env.SESSION_ID);
             if (sessionData) {
@@ -60,10 +59,9 @@ async function startBot(userId = "main_admin") {
         },
         printQRInTerminal: userId === "main_admin",
         logger: pino({ level: "fatal" }),
-        browser: ["Otsutsuki-MD", "Chrome", "20.0.0"], 
+        browser: ["Otsutsuki-MD", "Safari", "3.0"], 
         syncFullHistory: false,
         markOnlineOnConnect: true,
-        connectTimeoutMs: 60000,
     });
 
     activeSocks[userId] = sock;
@@ -79,7 +77,7 @@ async function startBot(userId = "main_admin") {
             
             // --- GÉNÉRATION DU SESSION_ID ---
             const credsPath = `${sessionDir}/creds.json`;
-            let session_id_env = "";
+            let session_id_env = "Indisponible";
             
             if (fs.existsSync(credsPath)) {
                 const credsData = fs.readFileSync(credsPath);
@@ -88,16 +86,15 @@ async function startBot(userId = "main_admin") {
 
             const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
             
-            // --- ENVOI DU MESSAGE DE BIENVENUE + SESSION_ID ---
+            // --- MESSAGE DE BIENVENUE ---
             await sock.sendMessage(userJid, { 
                 image: { url: "https://wallpapercave.com/wp/wp9113171.jpg" },
                 caption: `✨ *⛩️ OTSUTSUKI-MD : ÉVEIL RÉUSSI* ⛩️\n\n` +
                          `🚀 *Félicitations Shinobi !*\n` +
-                         `L'identité *${userId}* est désormais liée au flux divin.\n\n` +
+                         `Ton identité est désormais liée au flux divin.\n\n` +
                          `📌 *TON SESSION_ID :*\n\n` +
                          `\`\`\`${session_id_env}\`\`\`\n\n` +
-                         `⚠️ *CONSEIL :* Copie ce code et utilise-le comme valeur pour la variable **SESSION_ID** sur Koyeb pour un bot 24h/24.\n\n` +
-                         `🔹 *Hébergement :* Koyeb Cloud\n` +
+                         `⚠️ *INFO :* Copie ce code pour ta variable **SESSION_ID** sur Koyeb.\n\n` +
                          `_Utilise .menu pour déployer ta puissance._`
             });
         }
@@ -118,33 +115,22 @@ async function startBot(userId = "main_admin") {
     });
 
     sock.ev.on('group-participants.update', async (anu) => {
-        await groupUpdateHandler(sock, anu);
+        if (groupUpdateHandler) await groupUpdateHandler(sock, anu);
     });
 
     return sock;
 }
 
-// Lancement auto
+// Lancement automatique
 startBot();
 
-// --- INTERFACE WEB (Simplifiée) ---
+// --- ROUTES EXPRESS ---
 app.get('/', (req, res) => {
-    res.send(`<h1 style="text-align:center; margin-top:50px;">⛩️ OTSUTSUKI-MD SERVER ACTIVE ⛩️</h1>`);
+    res.send(`<h1 style="font-family:sans-serif;text-align:center;margin-top:50px;">⛩️ OTSUTSUKI-MD : SERVEUR ACTIF ⛩️</h1>`);
 });
 
 app.get('/get-qr/:id', (req, res) => {
     res.json({ qr: currentQRs[req.params.id] || null });
 });
 
-app.get('/get-pair/:id', async (req, res) => {
-    const userId = req.params.id;
-    const phone = req.query.phone;
-    const sock = activeSocks[userId];
-    if (!sock) return res.json({ error: "Instance non trouvée" });
-    try {
-        const code = await sock.requestPairingCode(phone);
-        res.json({ code });
-    } catch (err) { res.json({ error: "Échec technique" }); }
-});
-
-app.listen(PORT,
+app.listen(PORT, () => console.log("🌐 Serveur OTSUTSUKI actif sur port " + PORT));
