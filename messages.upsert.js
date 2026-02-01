@@ -2,7 +2,8 @@ const smsg = require('./Handler/smsg');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
-const { deepseekCommand } = require('./gemini'); 
+// ✅ Modification du chemin : On va chercher gemini dans le dossier commands
+const { deepseekCommand } = require('./commands/gemini'); 
 
 module.exports = async (sock, chatUpdate) => {
     try {
