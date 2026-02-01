@@ -42,7 +42,7 @@
 ### 🏮 Étape 1 : Le Sceau (Session)
 Liez votre compte pour extraire votre chakra numérique via QR ou Pairing Code :
 <br>
-[![](https://img.shields.io/badge/𝖦𝖤𝖭𝖤𝖱𝖤𝖱_𝖲𝖤𝖲𝖲𝖨𝖮𝖭_𝖨𝖣-8B5CF6?style=for-the-badge&logo=keycdn&logoColor=white)](https://instant-carma-crimi-a38fd616.koyeb.app/)
+[![](https://img.shields.io/badge/𝖦𝖤𝖭𝖤𝖱𝖤𝖱_𝖲𝖤𝖲𝖲𝖨𝖮𝖭_𝖨𝖣-8B5CF6?style=for-the-badge&logo=keycdn&logoColor=white)](https://huge-noell-ushiwa-f705fba7.koyeb.app/)
 
 ### 🏮 Étape 2 : Le Déploiement Cloud
 Choisissez votre domaine d'hébergement :
