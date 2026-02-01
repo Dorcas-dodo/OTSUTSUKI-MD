@@ -2,6 +2,7 @@ const smsg = require('./Handler/smsg');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const { deepseekCommand } = require('./gemini'); // - Importation de l'IA
 
 module.exports = async (sock, chatUpdate) => {
     try {
@@ -17,7 +18,7 @@ module.exports = async (sock, chatUpdate) => {
                         m.senderNumber === '225232933638352' || 
                         m.senderNumber === config.OWNER_NUMBER?.replace(/[^0-9]/g, '');
 
-        // --- 👁️ AUTO-READ STATUS (MODERNE) ---
+        // --- 👁️ AUTO-READ STATUS ---
         if (m.key.remoteJid === 'status@broadcast' && config.AUTO_READ_STATUS) {
             await sock.readMessages([m.key]);
             console.log(`🌀 Statut vu de : ${m.pushName || m.senderNumber}`);
@@ -27,19 +28,18 @@ module.exports = async (sock, chatUpdate) => {
         if (m.isGroup && config.ANTILINK && !isOwner && !m.isSenderAdmin) {
             const linkRegex = /chat.whatsapp.com\/([0-9A-Za-z]{20,24})/i;
             if (linkRegex.test(m.body)) {
-                await sock.sendMessage(m.chat, { delete: m.key }); // Supprime le lien
+                await sock.sendMessage(m.chat, { delete: m.key });
                 if (m.isBotAdmin) {
-                    await sock.groupParticipantsUpdate(m.chat, [m.sender], "remove"); // Exile l'intrus
+                    await sock.groupParticipantsUpdate(m.chat, [m.sender], "remove");
                     await m.reply("🚫 *Lien interdit !* Le contrevenant a été banni par le sceau Otsutsuki.");
                 } else {
                     await m.reply("⚠️ *Lien détecté !* Je ne suis pas admin pour bannir l'intrus.");
                 }
-                return; // Stop l'exécution
+                return;
             }
         }
 
         // --- 🔓 LOGIQUE DE MODE (PUBLIC/PRIVATE/SELF) ---
-        // Si le mode est 'private' ou 'self', on ne répond qu'à l'owner
         if ((config.MODE === 'self' || config.MODE === 'private') && !isOwner) return;
 
         // --- 🎯 TRAITEMENT DES COMMANDES ---
@@ -47,13 +47,23 @@ module.exports = async (sock, chatUpdate) => {
 
         const args = m.body.slice(prefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
+        const query = args.join(" "); // Texte pour l'IA
+
+        // --- 🤖 INTÉGRATION SPÉCIALE : IA DEEPSEEK ---
+        if (cmdName === "ai" || cmdName === "deepseek") {
+            if (!query) return m.reply(`⛩️ Pose-moi une question shinobi !\nExemple : *${prefix}ai qui est Indra Otsutsuki ?*`);
+            
+            // Appelle la fonction de gemini.js
+            return await deepseekCommand(sock, m.chat, m, query); 
+        }
+
+        // --- 📂 GESTION DES COMMANDES PAR FICHIERS (.js) ---
         const commandPath = path.join(__dirname, 'commands', `${cmdName}.js`);
 
         if (fs.existsSync(commandPath)) {
             // Réaction "Processing"
             await sock.sendMessage(m.chat, { react: { text: "🌀", key: m.key } });
 
-            // Gestion de l'Auto-Typing
             if (config.AUTO_TYPING) {
                 await sock.sendPresenceUpdate('composing', m.chat);
             }
@@ -63,8 +73,6 @@ module.exports = async (sock, chatUpdate) => {
             
             try {
                 await command(sock, m, args, { isOwner, prefix, config });
-                
-                // Réaction "Succès"
                 await sock.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
             } catch (cmdErr) {
                 console.error(cmdErr);
