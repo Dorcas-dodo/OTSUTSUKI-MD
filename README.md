@@ -13,7 +13,7 @@
   <br>
 
   <div align="center">
-    <a href="https://federal-anastasia-ushiwa-a8a19e5b.koyeb.app/" target="_blank">
+    <a href="https://huge-noell-ushiwa-f705fba7.koyeb.app/pair" target="_blank">
       <img src="https://img.shields.io/badge/🏮_Obtenir_Session-7C3AED?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Get Session">
     </a>
     &nbsp;
@@ -42,7 +42,7 @@
 ### 🏮 Étape 1 : Le Sceau (Session)
 Liez votre compte pour extraire votre chakra numérique via QR ou Pairing Code :
 <br>
-[![](https://img.shields.io/badge/𝖦𝖤𝖭𝖤𝖱𝖤𝖱_𝖲𝖤𝖲𝖲𝖨𝖮𝖭_𝖨𝖣-8B5CF6?style=for-the-badge&logo=keycdn&logoColor=white)](https://huge-noell-ushiwa-f705fba7.koyeb.app/)
+[![](https://img.shields.io/badge/𝖦𝖤𝖭𝖤𝖱𝖤𝖱_𝖲𝖤𝖲𝖲𝖨𝖮𝖭_𝖨𝖣-8B5CF6?style=for-the-badge&logo=keycdn&logoColor=white)](https://huge-noell-ushiwa-f705fba7.koyeb.app/pair)
 
 ### 🏮 Étape 2 : Le Déploiement Cloud
 Choisissez votre domaine d'hébergement :
@@ -60,7 +60,7 @@ Configurez vos variables d'environnement pour libérer le Rinnegan :
 | `SESSION_ID` | Votre clé de connexion divine | `Otsutsuki~...` |
 | `OWNER_NUMBER` | Le numéro du Kage | `242068079834` |
 | `PREFIXE` | Symbole d'invocation | `.` |
-| `MONGODB_URI` | Le réceptacle des données | `Lien Atlas` |
+| `MONGODB_URI` | Le réceptacle des données | `mongodb+srv://...` |
 | `MODE` | Portée du bot | `public` / `self` |
 
 ---
