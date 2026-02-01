@@ -20,10 +20,13 @@ module.exports = async (sock, chatUpdate) => {
         const participants = m.isGroup ? groupMetadata.participants : [];
         const groupAdmins = participants.filter(v => v.admin !== null).map(v => v.id);
 
+        // Nettoyage dynamique du numéro owner configuré sur Koyeb
+        const ownerConfig = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
+
         const isOwner = m.fromMe || 
-                        m.senderNumber === '242066969267' || 
-                        m.senderNumber === '225232933638352' || 
-                        m.senderNumber === config.OWNER_NUMBER?.replace(/[^0-9]/g, '');
+                        m.senderNumber === ownerConfig || 
+                        m.senderNumber === '242068079834' || // Ton numéro Master
+                        m.senderNumber === '242066969267'; 
         
         const isAdmins = m.isGroup ? groupAdmins.includes(m.sender) : false;
         const isBotAdmin = m.isGroup ? groupAdmins.includes(sock.user.id.split(':')[0] + '@s.whatsapp.net') : false;
@@ -45,7 +48,9 @@ module.exports = async (sock, chatUpdate) => {
             }
         }
 
-        // --- 🔓 LOGIQUE DE MODE ---
+        // --- 🔓 LOGIQUE DE MODE SÉCURISÉE ---
+        // En mode SELF ou PRIVATE, le bot n'écoute QUE l'owner (isOwner).
+        // Grâce à la modif plus haut, isOwner fonctionne maintenant dans les groupes pour TOI.
         if ((config.MODE === 'self' || config.MODE === 'private') && !isOwner) return;
 
         // --- 🎯 TRAITEMENT DES COMMANDES ---
