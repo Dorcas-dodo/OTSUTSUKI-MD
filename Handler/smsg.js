@@ -1,31 +1,23 @@
 const { getContentType } = require('@whiskeysockets/baileys');
 
-/**
- * OTSUTSUKI-MD - Analyseur de Message (v2.5)
- * Optimisé pour la réactivité dans les groupes et la gestion des médias.
- */
 module.exports = async (sock, m) => {
     if (!m) return m;
 
-    // --- 🔹 IDENTIFICATION DE BASE ---
     if (m.key) {
         m.id = m.key.id;
         m.chat = m.key.remoteJid;
         m.fromMe = m.key.fromMe;
         m.isGroup = m.chat.endsWith('@g.us');
         
-        // Identification précise de l'expéditeur
-        m.sender = m.fromMe ? (sock.user.id.split(':')[0] + '@s.whatsapp.net') : (m.isGroup ? m.key.participant : m.key.remoteJid);
+        // Nettoyage JID pour éviter les :4 ou :2
+        const userJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        m.sender = m.fromMe ? userJid : (m.isGroup ? m.key.participant : m.key.remoteJid);
         
-        // Numéro propre (ex: 242068079834)
-        m.senderNumber = m.sender.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+        m.senderNumber = m.sender.split('@')[0].replace(/[^0-9]/g, '');
     }
 
-    // --- 🔹 ANALYSE DU CONTENU (BODY) ---
     if (m.message) {
         m.mtype = getContentType(m.message);
-        
-        // On récupère le corps du message (Body) de manière exhaustive
         m.body = (m.mtype === 'conversation') ? m.message.conversation : 
                  (m.mtype === 'extendedTextMessage') ? m.message.extendedTextMessage.text : 
                  (m.mtype === 'imageMessage') ? m.message.imageMessage.caption : 
@@ -36,21 +28,15 @@ module.exports = async (sock, m) => {
                  (m.message[m.mtype]?.caption) ? m.message[m.mtype].caption : 
                  (m.message[m.mtype]?.text) ? m.message[m.mtype].text : '';
 
-        // Raccourci intelligent pour répondre avec mention auto
         m.reply = async (text) => {
-            return await sock.sendMessage(m.chat, { 
-                text: text, 
-                mentions: [m.sender] 
-            }, { quoted: m });
+            return await sock.sendMessage(m.chat, { text: text, mentions: [m.sender] }, { quoted: m });
         };
-        
-        // Raccourci pour réagir rapidement
         m.react = async (emoji) => {
             return await sock.sendMessage(m.chat, { react: { text: emoji, key: m.key } });
         };
     }
 
-    // --- 🔹 GESTION MODERNE DES DROITS (isAdmin) ---
+    // --- 🔹 GESTION DES DROITS AMÉLIORÉE ---
     m.isBotAdmin = false;
     m.isSenderAdmin = false;
 
@@ -58,20 +44,22 @@ module.exports = async (sock, m) => {
         try {
             const metadata = await sock.groupMetadata(m.chat);
             const participants = metadata.participants || [];
-            const botNumber = sock.user.id.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+            
+            // ID propre du bot
+            const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
 
-            const bot = participants.find(p => p.id.replace(/[^0-9]/g, '').startsWith(botNumber));
-            const sender = participants.find(p => p.id === m.sender);
+            // On cherche directement par JID complet, c'est plus fiable
+            const bot = participants.find(p => p.id.split(':')[0] === botJid.split(':')[0]);
+            const sender = participants.find(p => p.id.split(':')[0] === m.sender.split(':')[0]);
 
             if (bot && (bot.admin === 'admin' || bot.admin === 'superadmin')) m.isBotAdmin = true;
             if (sender && (sender.admin === 'admin' || sender.admin === 'superadmin')) m.isSenderAdmin = true;
         } catch (e) {
-            m.isBotAdmin = false;
-            m.isSenderAdmin = false;
+            console.error("Erreur Metadata:", e);
         }
     }
 
-    // --- 🔹 GESTION DES MESSAGES CITÉS (QUOTED) ---
+    // --- 🔹 GESTION DES MESSAGES CITÉS ---
     m.quoted = null;
     const quotedContext = m.message?.extendedTextMessage?.contextInfo || m.message[m.mtype]?.contextInfo;
     
@@ -81,7 +69,7 @@ module.exports = async (sock, m) => {
         m.quoted.id = q.stanzaId;
         m.quoted.chat = m.chat;
         m.quoted.sender = q.participant;
-        m.quoted.fromMe = m.quoted.sender === (sock.user && sock.user.id);
+        m.quoted.fromMe = m.quoted.sender.split(':')[0] === sock.user.id.split(':')[0];
         m.quoted.mtype = getContentType(q.quotedMessage);
         
         m.quoted.body = q.quotedMessage?.conversation || 
