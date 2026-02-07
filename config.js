@@ -8,19 +8,19 @@ module.exports = {
     OWNER_NUMBER: (process.env.OWNER_NUMBER || "242068079834").replace(/[^0-9]/g, ''),
 
     // ⚙️ Paramètres de fonctionnement
-    // 'public' : tout le monde peut utiliser le bot
-    // 'self' ou 'private' : Seul l'owner (via OWNER_NUMBER) peut l'activer partout
-    MODE: process.env.MODE || "self", 
+    // CHANGÉ : 'public' permet au bot de répondre à tout le monde dans les groupes
+    MODE: process.env.MODE || "public", 
     
     // 🛡️ Protections & Automatisations
     WELCOME: process.env.WELCOME === "true", 
     GOODBYE: process.env.GOODBYE === "true", 
     ANTILINK: process.env.ANTILINK === "true",
     
-    // 👁️ Fonctions de visibilité (Moderne)
+    // 👁️ Fonctions de visibilité
     AUTO_READ_STATUS: process.env.AUTO_READ_STATUS === "true", 
-    AUTO_READ_MESSAGES: process.env.AUTO_READ_MESSAGES === "false", // "false" recommandé pour plus de discrétion
-    AUTO_TYPING: process.env.AUTO_TYPING === "true", // "true" donne un aspect plus humain au bot
+    // CHANGÉ : Mis sur "true" pour assurer que le bot détecte bien les commandes
+    AUTO_READ_MESSAGES: process.env.AUTO_READ_MESSAGES || "true", 
+    AUTO_TYPING: process.env.AUTO_TYPING === "true", 
     
     // 💾 Base de Données (Mongoose)
     DATABASE_URL: process.env.DATABASE_URL || "", 
