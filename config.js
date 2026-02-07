@@ -1,14 +1,15 @@
 module.exports = {
     // 🔗 Connexion & Sécurité
+    // SESSION_ID est conservé ici au cas où, mais ton script va désormais privilégier MongoDB
     SESSION_ID: process.env.SESSION_ID || "", 
     PREFIXE: process.env.PREFIXE || ".",
     OWNER_NAME: process.env.OWNER_NAME || "Indra Otsutsuki",
     
-    // On s'assure que le numéro est bien nettoyé dès le départ
+    // Nettoyage automatique du numéro (supprime les +, les espaces, etc.)
     OWNER_NUMBER: (process.env.OWNER_NUMBER || "242068079834").replace(/[^0-9]/g, ''),
 
     // ⚙️ Paramètres de fonctionnement
-    // 'public' permet au bot de répondre à tout le monde dans les groupes
+    // 'public' : répond à tous | 'self' : répond uniquement à l'owner
     MODE: process.env.MODE || "public", 
     
     // 🛡️ Protections & Automatisations
@@ -18,12 +19,11 @@ module.exports = {
     
     // 👁️ Fonctions de visibilité
     AUTO_READ_STATUS: process.env.AUTO_READ_STATUS === "true", 
-    // CHANGÉ : Mis sur "false" par défaut pour éviter les conflits de lecture/exécution
     AUTO_READ_MESSAGES: process.env.AUTO_READ_MESSAGES === "true", 
     AUTO_TYPING: process.env.AUTO_TYPING === "true", 
     
     // 💾 Base de Données (Mongoose)
-    // J'utilise MONGODB_URI qui est déjà dans ton Koyeb pour la session stable
+    // On donne la priorité à MONGODB_URI (standard Koyeb)
     DATABASE_URL: process.env.MONGODB_URI || process.env.DATABASE_URL || "", 
     DATABASE: process.env.DATABASE || "Otsutsuki_DB",
 
