@@ -1,24 +1,35 @@
-module.exports = async (sock, m, args) => {
-    const from = m.key.remoteJid;
-    const isGroup = from.endsWith('@g.us');
+module.exports = async (sock, m, args, { isAdmins, isOwner, participants }) => {
+    try {
+        const from = m.chat;
 
-    // 1. Vérification si on est en groupe
-    if (!isGroup) return sock.sendMessage(from, { text: "Cette commande est réservée aux clans ! ❌" });
+        // 1. SÉCURITÉ : On utilise les variables passées par le handler
+        if (!isAdmins && !isOwner) {
+            return sock.sendMessage(from, { 
+                text: "⚠️ *ACCÈS REFUSÉ* : Tu n'as pas assez de chakra pour invoquer l'appel du clan. 🏮" 
+            }, { quoted: m });
+        }
 
-    const groupMetadata = await sock.groupMetadata(from);
-    const participants = groupMetadata.participants;
-    
-    // Vérifier si l'utilisateur est admin
-    const isAdmin = participants.find(p => p.id === m.key.participant)?.admin;
-    if (!isAdmin) return sock.sendMessage(from, { text: "Seul un chef de clan peut lancer un appel général. 🏮" });
+        // 2. RÉCUPÉRATION DU MESSAGE
+        // On vérifie les arguments ou si on a répondu à un message
+        let message = args.join(" ");
+        if (!message && m.quoted) message = m.quoted.text;
 
-    // 2. Récupération du message à envoyer
-    // Si pas de texte après .hidetag, on met un message par défaut
-    const message = args.join(" ") || "Annonce importante du Grand Maître Otsutsuki ! ⛩️";
+        if (!message) {
+            return sock.sendMessage(from, { 
+                text: "⛩️ *ÉREUR D'INVOCATION* : Quel message souhaites-tu transmettre au clan ?" 
+            }, { quoted: m });
+        }
 
-    // 3. Envoi du message avec mention de TOUS les participants (invisible)
-    await sock.sendMessage(from, { 
-        text: message, 
-        mentions: participants.map(a => a.id) 
-    });
+        // 3. ENVOI DE L'APPEL GÉNÉRAL
+        await sock.sendMessage(from, { 
+            text: message, 
+            mentions: participants.map(p => p.id) // Tag invisible de tout le monde
+        });
+
+        // 4. RÉACTION VISUELLE
+        await sock.sendMessage(from, { react: { text: "📢", key: m.key } });
+
+    } catch (e) {
+        console.error("Erreur Hidetag :", e);
+    }
 };
