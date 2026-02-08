@@ -1,7 +1,6 @@
 const express = require('express');
 const { 
     default: makeWASocket, 
-    useMultiFileAuthState, 
     makeCacheableSignalKeyStore,
     DisconnectReason,
     fetchLatestBaileysVersion
@@ -11,9 +10,8 @@ const QRCode = require('qrcode');
 const mongoose = require('mongoose');
 const messageHandler = require('./messages.upsert');
 const config = require('./config');
-const fs = require('fs');
 
-// --- 🧠 LOGIQUE D'AUTH MONGODB (Plus besoin de fichier externe) ---
+// --- 🧠 LOGIQUE D'AUTH MONGODB AMÉLIORÉE ---
 const AuthSchema = new mongoose.Schema({
     id: { type: String, unique: true, required: true },
     data: { type: String, required: true }
@@ -22,23 +20,30 @@ const AuthModel = mongoose.models.Auth || mongoose.model('Auth', AuthSchema);
 
 const useMongoDBAuthState = async () => {
     const writeData = async (data, id) => {
-        const jsonStr = JSON.stringify(data, (key, value) => {
-            if (Buffer.isBuffer(value)) return value.toString('base64');
-            return value;
-        });
-        await AuthModel.findOneAndUpdate({ id }, { data: jsonStr }, { upsert: true });
+        try {
+            const jsonStr = JSON.stringify(data, (key, value) => {
+                if (Buffer.isBuffer(value)) return value.toString('base64');
+                return value;
+            });
+            await AuthModel.findOneAndUpdate({ id }, { data: jsonStr }, { upsert: true });
+        } catch (e) { console.error("❌ Erreur écriture MongoDB:", e); }
     };
+
     const readData = async (id) => {
-        const res = await AuthModel.findOne({ id });
-        if (!res) return null;
-        return JSON.parse(res.data, (key, value) => {
-            if (typeof value === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(value) && value.length > 20) {
-                return Buffer.from(value, 'base64');
-            }
-            return value;
-        });
+        try {
+            const res = await AuthModel.findOne({ id });
+            if (!res) return null;
+            return JSON.parse(res.data, (key, value) => {
+                if (typeof value === 'string' && /^[A-Za-z0-9+/]*={0,2}$/.test(value) && value.length > 20) {
+                    return Buffer.from(value, 'base64');
+                }
+                return value;
+            });
+        } catch (e) { return null; }
     };
+
     const creds = await readData('creds') || {};
+
     return {
         state: {
             creds,
@@ -47,7 +52,6 @@ const useMongoDBAuthState = async () => {
                     const data = {};
                     await Promise.all(ids.map(async (id) => {
                         let value = await readData(`${type}-${id}`);
-                        if (type === 'app-state-sync-key' && value) value = value;
                         data[id] = value;
                     }));
                     return data;
@@ -75,14 +79,12 @@ mongoose.connect(config.DATABASE_URL)
     .then(() => console.log("🍃 OTSUTSUKI-MD : Base de données connectée !"))
     .catch(err => console.error("❌ ERREUR MONGODB :", err.message));
 
-let activeSocks = {};
 let currentQRs = {};
 let pairingCodes = {};
 
 async function startBot(userId = "main_admin", usePairing = false, phoneNumber = "") {
-    console.log(`📡 Initialisation de la session MongoDB pour : ${userId}`);
+    console.log(`📡 Initialisation session pour : ${userId}`);
     
-    // Utilisation de la session MongoDB au lieu du dossier local
     const { state, saveCreds } = await useMongoDBAuthState();
     const { version } = await fetchLatestBaileysVersion();
     
@@ -97,6 +99,7 @@ async function startBot(userId = "main_admin", usePairing = false, phoneNumber =
         syncFullHistory: false,
         markOnlineOnConnect: true,
         connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 0,
     });
 
     if (usePairing && !sock.authState.creds.registered) {
@@ -104,12 +107,10 @@ async function startBot(userId = "main_admin", usePairing = false, phoneNumber =
             try {
                 let code = await sock.requestPairingCode(phoneNumber);
                 pairingCodes[userId] = code?.match(/.{1,4}/g)?.join("-") || code;
-                console.log(`🔑 Code de couplage pour ${phoneNumber} : ${pairingCodes[userId]}`);
+                console.log(`🔑 Code de couplage [${phoneNumber}] : ${pairingCodes[userId]}`);
             } catch (err) { console.error("Pairing Error:", err); }
-        }, 3000);
+        }, 5000);
     }
-
-    activeSocks[userId] = sock;
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -121,24 +122,26 @@ async function startBot(userId = "main_admin", usePairing = false, phoneNumber =
         if (connection === 'open') {
             currentQRs[userId] = "connected";
             delete pairingCodes[userId];
-            console.log(`✅ OTSUTSUKI-MD en ligne : ${sock.user.name || 'Bot'}`);
+            console.log(`✅ OTSUTSUKI-MD connecté : ${sock.user.name || 'Bot'}`);
             
-            const myNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-            await sock.sendMessage(myNumber, { 
-                text: `⛩️ *CONNEXION RÉUSSIE*\n\nTa session est désormais sauvegardée dans MongoDB. Plus besoin de SESSION_ID !` 
+            await sock.sendMessage(sock.user.id, { 
+                text: `⛩️ *BOT OPÉRATIONNEL*\n\nSession sauvegardée sur MongoDB. Statut : Stable.` 
             });
         }
 
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode;
             const shouldReconnect = reason !== DisconnectReason.loggedOut;
-            console.log(`❌ Connexion perdue (Raison: ${reason}). Reconnect: ${shouldReconnect}`);
+            
+            console.log(`❌ Connexion perdue (Raison: ${reason}). Reconnexion : ${shouldReconnect}`);
 
             if (shouldReconnect) {
-                setTimeout(() => startBot(userId), 10000);
+                // Délai plus long pour éviter le spam de reconnexion
+                setTimeout(() => startBot(userId), 20000);
             } else {
-                console.log("❌ Déconnecté. Suppression des données en base...");
-                await AuthModel.deleteMany({}); // Optionnel: efface la DB si déconnexion manuelle
+                console.log("❌ Déconnecté. Nettoyage de la base...");
+                await AuthModel.deleteMany({ id: { $regex: /^creds/ } }); 
+                process.exit(1);
             }
         }
     });
@@ -164,8 +167,8 @@ app.get('/pair', async (req, res) => {
             clearInterval(interval); 
             res.send(`${HTML_HEAD}<div class="card"><h2>VOTRE CODE</h2><div class="code-display">${pairingCodes["main_admin"]}</div><button onclick="window.location.href='/'">RETOUR</button></div>`); 
         } 
-        if (check++ > 25) { clearInterval(interval); res.send("Délai expiré. Rafraîchissez."); } 
+        if (check++ > 30) { clearInterval(interval); res.send("Délai expiré. Rafraîchissez."); } 
     }, 1000); 
 });
 
-app.listen(PORT, () => console.log("🌐 Serveur Web en ligne sur le port : " + PORT));
+app.listen(PORT, () => console.log("🌐 Serveur Web : " + PORT));
