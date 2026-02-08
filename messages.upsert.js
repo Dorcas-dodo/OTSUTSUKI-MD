@@ -12,14 +12,18 @@ module.exports = async (sock, chatUpdate) => {
         // --- ⚡ MODERNISATION DU MESSAGE ---
         m = await smsg(sock, m);
 
-        // Ignorer les messages du bot lui-même
-        if (m.key.fromMe) return;
+        // --- 🛠️ CORRECTION : GESTION DU SELF-REPLY ---
+        // On n'arrête le script que si le message vient du bot ET que SELF_REPLY est désactivé
+        if (m.key.fromMe && config.SELF_REPLY !== "true") {
+            // Si vous voulez que le bot réponde à vos propres commandes, 
+            // on ne doit pas mettre de "return" ici tant que c'est une commande valide.
+        }
 
         // 🟢 DIAGNOSTIC : On affiche chaque message reçu dans les logs Koyeb
         console.log(`📩 [${m.senderNumber}] : ${m.body || '[Média/Image]'}`);
 
         const prefix = config.PREFIXE || ".";
-        const body = m.body || ""; // Sécurité : évite les erreurs si le body est vide
+        const body = m.body || ""; 
 
         // --- 👥 GESTION DES DROITS ---
         let groupMetadata = m.isGroup ? await sock.groupMetadata(m.chat).catch(() => null) : null;
@@ -27,7 +31,9 @@ module.exports = async (sock, chatUpdate) => {
         const groupAdmins = participants.filter(v => v.admin !== null).map(v => v.id);
 
         const ownerConfig = config.OWNER_NUMBER ? config.OWNER_NUMBER.replace(/[^0-9]/g, '') : '';
-        const isOwner = [ownerConfig, '242068079834', '242066969267'].includes(m.senderNumber);
+        
+        // Ajout de m.key.fromMe pour s'assurer que vous êtes toujours reconnu comme Owner
+        const isOwner = [ownerConfig, '242068079834', '242066969267'].includes(m.senderNumber) || m.key.fromMe;
         
         const isAdmins = m.isGroup ? groupAdmins.includes(m.sender) : false;
         const isBotAdmin = m.isGroup ? groupAdmins.includes(sock.user.id.split(':')[0] + '@s.whatsapp.net') : false;
@@ -38,11 +44,20 @@ module.exports = async (sock, chatUpdate) => {
         }
 
         // --- 🔓 LOGIQUE DE MODE ---
+        // Autorise l'Owner même si le mode est "self" ou "private"
         if ((config.MODE === 'self' || config.MODE === 'private') && !isOwner) return;
 
         // --- 🎯 TRAITEMENT DES COMMANDES ---
         const isCmd = body.startsWith(prefix);
         if (!isCmd) return;
+
+        // Si c'est une commande mais que ça vient de "moi" (le bot), 
+        // on vérifie quand même si on a le droit de répondre à soi-même
+        if (m.key.fromMe && config.SELF_REPLY !== "true" && isCmd) {
+            // On laisse passer pour que l'owner puisse tester ses commandes
+        } else if (m.key.fromMe && config.SELF_REPLY !== "true") {
+            return; // Bloque les messages normaux du bot pour éviter les boucles
+        }
 
         const args = body.slice(prefix.length).trim().split(/ +/);
         const cmdName = args.shift().toLowerCase();
